@@ -52,7 +52,8 @@
         </div>
         <div class="topbar-actions">
           <button class="ghost-button ghost-button-secondary" type="button" id="theme-toggle" aria-label="Activer le mode nuit bleu">
-            Mode nuit
+            <span class="button-icon" aria-hidden="true">◐</span>
+            <span>Mode nuit</span>
           </button>
           <button class="ghost-button" type="button" id="logout-btn">Déconnexion</button>
         </div>
@@ -62,24 +63,44 @@
         <!-- Statistiques -->
         <section class="stats-grid" aria-label="Statistiques principales">
           <article class="stat-card stat-success">
-            <span class="stat-label">Statut Broker</span>
-            <strong>Connecté</strong>
-            <small>localhost:1883</small>
+            <div class="stat-card-row">
+              <span class="stat-icon" aria-hidden="true">●</span>
+              <span class="stat-label">Statut Broker</span>
+            </div>
+            <div class="stat-card-row stat-card-main">
+              <strong>Connecté</strong>
+              <small>localhost:1883</small>
+            </div>
           </article>
           <article class="stat-card stat-blue">
-            <span class="stat-label">Messages reçus</span>
-            <strong>128</strong>
-            <small>Aujourd'hui</small>
+            <div class="stat-card-row">
+              <span class="stat-icon" aria-hidden="true">↓</span>
+              <span class="stat-label">Messages reçus</span>
+            </div>
+            <div class="stat-card-row stat-card-main">
+              <strong>128</strong>
+              <small>Aujourd'hui</small>
+            </div>
           </article>
           <article class="stat-card stat-orange">
-            <span class="stat-label">Messages envoyés</span>
-            <strong>64</strong>
-            <small>Aujourd'hui</small>
+            <div class="stat-card-row">
+              <span class="stat-icon" aria-hidden="true">↑</span>
+              <span class="stat-label">Messages envoyés</span>
+            </div>
+            <div class="stat-card-row stat-card-main">
+              <strong>64</strong>
+              <small>Aujourd'hui</small>
+            </div>
           </article>
           <article class="stat-card stat-purple">
-            <span class="stat-label">Clients connectés</span>
-            <strong>3</strong>
-            <small>En ligne maintenant</small>
+            <div class="stat-card-row">
+              <span class="stat-icon" aria-hidden="true">◎</span>
+              <span class="stat-label">Clients connectés</span>
+            </div>
+            <div class="stat-card-row stat-card-main">
+              <strong>3</strong>
+              <small>En ligne maintenant</small>
+            </div>
           </article>
         </section>
 
@@ -95,7 +116,7 @@
               <button type="button" class="action-button action-green" data-command="start-broker">Démarrer Broker</button>
               <button type="button" class="action-button action-red" data-command="stop-broker">Arrêter Broker</button>
               <button type="button" class="action-button action-blue" data-command="start-subscriber">Démarrer Subscriber</button>
-              <button type="button" class="action-button action-purple" data-command="publish-temperature">Envoyer Message</button>
+              <button type="button" class="action-button action-purple" id="open-publish-modal-btn">Envoyer Message</button>
               <button type="button" class="action-button action-orange" data-command="restart-broker">Redémarrer Broker</button>
               <button type="button" class="action-button action-slate" data-command="open-terminal">Ouvrir Terminal</button>
             </div>
@@ -141,7 +162,7 @@
                     <td>4</td>
                     <td><code>netstat -an | findstr :1883</code></td>
                     <td>Vérifier le port 1883</td>
-                    <td><button type="button" class="table-action" data-command="open-terminal">Exécuter</button></td>
+                    <td><button type="button" class="table-action" data-command="verify-mqtt-port">Exécuter</button></td>
                   </tr>
                 </tbody>
               </table>
@@ -176,18 +197,21 @@
               <span class="live-badge">En temps réel</span>
             </div>
 
-            <ul class="message-list">
-              <li>
+            <ul class="message-list" id="message-list">
+              <li class="message-item" data-message-type="incoming">
                 <span class="message-dot incoming"></span>
-                <span>25°C reçu</span>
+                <span class="message-main">25°C</span>
+                <span class="message-meta">temperature · Reçu</span>
               </li>
-              <li>
+              <li class="message-item" data-message-type="outgoing">
                 <span class="message-dot outgoing"></span>
-                <span>25°C envoyé</span>
+                <span class="message-main">25°C</span>
+                <span class="message-meta">temperature · Envoyé</span>
               </li>
-              <li>
+              <li class="message-item" data-message-type="incoming">
                 <span class="message-dot incoming"></span>
-                <span>24°C reçu</span>
+                <span class="message-main">24°C</span>
+                <span class="message-meta">temperature · Reçu</span>
               </li>
             </ul>
           </section>
@@ -230,6 +254,37 @@
     </main>
   </div>
 
-  <script src="script.js"></script>
+  <div class="modal-backdrop" id="publish-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="publish-modal-title">
+      <div class="modal-header">
+        <div>
+          <h3 id="publish-modal-title">Envoyer un message MQTT</h3>
+          <p>Choisissez le topic et le contenu du message à publier.</p>
+        </div>
+        <button type="button" class="icon-button" id="close-publish-modal" aria-label="Fermer la fenêtre">×</button>
+      </div>
+
+      <form id="publish-form" class="modal-form">
+        <label class="field">
+          <span>Topic</span>
+          <input type="text" id="publish-topic" name="topic" value="temperature" />
+        </label>
+
+        <label class="field">
+          <span>Message</span>
+          <textarea id="publish-message" name="message" rows="4">25°C</textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="ghost-button ghost-button-secondary" id="cancel-publish-modal">Annuler</button>
+          <button type="submit" class="table-action" id="submit-publish-message">Envoyer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+    <script src="launcher-bridge.js"></script>
+    <script src="script.js"></script>
+    <script src="button-fallback.js"></script>
 </body>
 </html>

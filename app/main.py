@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import os
 import shutil
+import socket
 import subprocess
+import sys
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Deque, Literal
 
+if __package__ is None or __package__ == "":
+    sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from launcher.checker import build_dependency_report
 
 
@@ -27,6 +34,13 @@ BROKER_PROCESS: subprocess.Popen | None = None
 SUBSCRIBER_PROCESS: subprocess.Popen | None = None
 
 app = FastAPI(title="Smart Controle Mosquitto", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _timestamp() -> str:
@@ -39,12 +53,30 @@ def _log(level: Literal["info", "error"], message: str) -> None:
 
 def _resolve_command(env_name: str, fallback: str) -> str:
     command = os.getenv(env_name, fallback)
-    if shutil.which(command) is None:
+    resolved_path = _find_command_path(command)
+    if resolved_path is None:
         raise HTTPException(
             status_code=500,
             detail=f"Commande introuvable: {command}. Installe Mosquitto ou renseigne {env_name}.",
         )
-    return command
+    return resolved_path
+
+
+def _find_command_path(command: str) -> str | None:
+    direct = shutil.which(command)
+    if direct:
+        return direct
+
+    if os.name == "nt":
+        candidates = [
+            Path("C:/Program Files/mosquitto") / f"{command}.exe",
+            Path("C:/Program Files (x86)/mosquitto") / f"{command}.exe",
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+
+    return None
 
 
 def _spawn_process(command: list[str], label: str) -> subprocess.Popen:
@@ -64,6 +96,79 @@ def _start_process(command: list[str], label: str) -> dict[str, str]:
     return {"message": f"{label} lancé", "pid": str(process.pid), "command": " ".join(command)}
 
 
+class PublishMessagePayload(BaseModel):
+    topic: str
+    message: str
+
+
+def _publish_message(topic: str, message: str) -> dict[str, str]:
+    clean_topic = topic.strip()
+    clean_message = message.strip()
+
+    if not clean_topic:
+        raise HTTPException(status_code=400, detail="Le topic est obligatoire.")
+
+    if not clean_message:
+        raise HTTPException(status_code=400, detail="Le message est obligatoire.")
+
+    mosquitto_pub = _resolve_command("MOSQUITTO_PUB_BIN", "mosquitto_pub")
+    command = [
+        mosquitto_pub,
+        "-h",
+        "localhost",
+        "-t",
+        clean_topic,
+        "-m",
+        clean_message,
+    ]
+    response = _start_process(command, "MQTT publisher")
+    response["topic"] = clean_topic
+    response["payload"] = clean_message
+    _log("info", f"Message publié sur {clean_topic}: {clean_message}")
+    return response
+
+
+def _is_local_port_open(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.35)
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
+def _open_terminal_window() -> dict[str, str]:
+    if os.name != "nt":
+        raise HTTPException(status_code=501, detail="Ouverture terminal supportée seulement sur Windows pour le moment.")
+
+    creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+    try:
+        process = subprocess.Popen(
+            ["cmd.exe", "/k", f"cd /d {ROOT_DIR}"],
+            creationflags=creation_flags,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="Impossible d'ouvrir le terminal Windows.") from exc
+
+    _log("info", f"Terminal Windows ouvert: {process.pid}")
+    return {
+        "message": "Terminal Windows ouvert",
+        "pid": str(process.pid),
+        "command": f'cmd.exe /k "cd /d {ROOT_DIR}"',
+    }
+
+
+def _process_is_running(process: subprocess.Popen | None) -> bool:
+    return process is not None and process.poll() is None
+
+
+def _stop_tracked_process(process: subprocess.Popen | None, label: str) -> tuple[subprocess.Popen | None, dict[str, str] | None]:
+    if not _process_is_running(process):
+        return None, None
+
+    pid = process.pid
+    process.terminate()
+    _log("info", f"{label} arrêté: {pid}")
+    return None, {"message": f"{label} arrêté", "pid": str(pid)}
+
+
 @app.get("/")
 def home() -> FileResponse:
     if not DASHBOARD_FILE.exists():
@@ -73,6 +178,11 @@ def home() -> FileResponse:
 
 @app.get("/dashboard")
 def dashboard() -> FileResponse:
+    return home()
+
+
+@app.get("/dashboard/")
+def dashboard_with_slash() -> FileResponse:
     return home()
 
 
@@ -120,6 +230,32 @@ def system_status() -> dict[str, object]:
     }
 
 
+@app.get("/api/system/runtime-status")
+def runtime_status() -> dict[str, object]:
+    broker_running = _process_is_running(BROKER_PROCESS)
+    subscriber_running = _process_is_running(SUBSCRIBER_PROCESS)
+
+    return {
+        "backend": {"running": True},
+        "managed_services": [
+            {
+                "name": "FastAPI backend",
+                "running": True,
+            },
+            {
+                "name": "MQTT broker",
+                "running": broker_running,
+                "pid": str(BROKER_PROCESS.pid) if broker_running and BROKER_PROCESS else "",
+            },
+            {
+                "name": "MQTT subscriber",
+                "running": subscriber_running,
+                "pid": str(SUBSCRIBER_PROCESS.pid) if subscriber_running and SUBSCRIBER_PROCESS else "",
+            },
+        ],
+    }
+
+
 @app.post("/api/commands/start-broker")
 def start_broker() -> dict[str, str]:
     global BROKER_PROCESS
@@ -142,15 +278,12 @@ def start_broker() -> dict[str, str]:
 def stop_broker() -> dict[str, str]:
     global BROKER_PROCESS
 
-    if not BROKER_PROCESS or BROKER_PROCESS.poll() is not None:
+    if not _process_is_running(BROKER_PROCESS):
         _log("info", "Demande d'arrêt broker: aucun processus suivi.")
         return {"message": "Aucun broker démarré depuis ce launcher"}
 
-    pid = BROKER_PROCESS.pid
-    BROKER_PROCESS.terminate()
-    BROKER_PROCESS = None
-    _log("info", f"Mosquitto broker arrêté: {pid}")
-    return {"message": "Mosquitto broker arrêté", "pid": str(pid)}
+    BROKER_PROCESS, response = _stop_tracked_process(BROKER_PROCESS, "Mosquitto broker")
+    return response or {"message": "Aucun broker démarré depuis ce launcher"}
 
 
 @app.post("/api/commands/start-subscriber")
@@ -171,19 +304,26 @@ def subscribe() -> dict[str, str]:
     }
 
 
+@app.post("/api/commands/stop-subscriber")
+def stop_subscriber() -> dict[str, str]:
+    global SUBSCRIBER_PROCESS
+
+    if not _process_is_running(SUBSCRIBER_PROCESS):
+        _log("info", "Demande d'arrêt subscriber: aucun processus suivi.")
+        return {"message": "Aucun subscriber démarré depuis ce launcher"}
+
+    SUBSCRIBER_PROCESS, response = _stop_tracked_process(SUBSCRIBER_PROCESS, "MQTT subscriber")
+    return response or {"message": "Aucun subscriber démarré depuis ce launcher"}
+
+
 @app.post("/api/commands/publish-temperature")
 def publish() -> dict[str, str]:
-    mosquitto_pub = _resolve_command("MOSQUITTO_PUB_BIN", "mosquitto_pub")
-    command = [
-        mosquitto_pub,
-        "-h",
-        "localhost",
-        "-t",
-        DEFAULT_TOPIC,
-        "-m",
-        DEFAULT_MESSAGE,
-    ]
-    return _start_process(command, "MQTT publisher")
+    return _publish_message(DEFAULT_TOPIC, DEFAULT_MESSAGE)
+
+
+@app.post("/api/commands/publish-message")
+def publish_message(payload: PublishMessagePayload) -> dict[str, str]:
+    return _publish_message(payload.topic, payload.message)
 
 
 @app.post("/api/commands/restart-broker")
@@ -194,10 +334,41 @@ def restart_broker() -> dict[str, str]:
 
 @app.post("/api/commands/open-terminal")
 def open_terminal() -> dict[str, str]:
-    _log("info", "Ouverture terminal demandée depuis le dashboard.")
+    return _open_terminal_window()
+
+
+@app.post("/api/commands/verify-mqtt-port")
+def verify_mqtt_port() -> dict[str, str]:
+    port = 1883
+    port_open = _is_local_port_open(port)
+    status = "ouvert" if port_open else "fermé"
+    _log("info", f"Vérification du port MQTT {port}: {status}")
     return {
-        "message": "Demande terminal reçue",
-        "note": "Dans la version desktop, PySide6 pourra ouvrir une console système.",
+        "message": f"Port MQTT {port} {status}",
+        "port": str(port),
+        "status": status,
+        "port_open": "true" if port_open else "false",
+    }
+
+
+@app.post("/api/system/shutdown-managed")
+def shutdown_managed() -> dict[str, object]:
+    global BROKER_PROCESS, SUBSCRIBER_PROCESS
+
+    stopped_services: list[dict[str, str]] = []
+
+    SUBSCRIBER_PROCESS, subscriber_response = _stop_tracked_process(SUBSCRIBER_PROCESS, "MQTT subscriber")
+    if subscriber_response:
+        stopped_services.append(subscriber_response)
+
+    BROKER_PROCESS, broker_response = _stop_tracked_process(BROKER_PROCESS, "Mosquitto broker")
+    if broker_response:
+        stopped_services.append(broker_response)
+
+    _log("info", f"Extinction des services gérés: {len(stopped_services)} service(s) arrêté(s).")
+    return {
+        "message": "Extinction des services gérés terminée",
+        "stopped_services": stopped_services,
     }
 
 
@@ -214,3 +385,25 @@ def legacy_subscribe() -> dict[str, str]:
 @app.post("/publish")
 def legacy_publish() -> dict[str, str]:
     return publish()
+
+
+@app.get("/button-fallback.js")
+def dashboard_button_fallback_script():
+    return FileResponse(
+        DASHBOARD_DIR / "button-fallback.js",
+        media_type="application/javascript",
+    )
+
+
+@app.get("/launcher-bridge.js")
+def dashboard_launcher_bridge_script():
+    return FileResponse(
+        DASHBOARD_DIR / "launcher-bridge.js",
+        media_type="application/javascript",
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

@@ -6,8 +6,14 @@
   - rester simple à convertir en React ensuite
 */
 
-const API_BASE = "http://127.0.0.1:8000/api/commands";
-const SYSTEM_STATUS_URL = "http://127.0.0.1:8000/api/system/status";
+const API_ORIGIN =
+  window.location.protocol === "file:"
+    ? "http://127.0.0.1:8000"
+    : window.location.origin;
+const API_BASE = `${API_ORIGIN}/api/commands`;
+const SYSTEM_STATUS_URL = `${API_ORIGIN}/api/system/status`;
+const HEALTH_URL = `${API_ORIGIN}/health`;
+const MESSAGE_HISTORY_KEY = "mqtt-dashboard-message-history";
 const terminalLog = document.getElementById("terminal-log");
 const brokerStatus = document.getElementById("broker-status");
 const logoutBtn = document.getElementById("logout-btn");
@@ -17,6 +23,17 @@ const pageSubtitle = document.getElementById("page-subtitle");
 const dependencyReport = document.getElementById("dependency-report");
 const systemStatusPill = document.getElementById("system-status-pill");
 const refreshSystemBtn = document.getElementById("refresh-system-btn");
+const messageList = document.getElementById("message-list");
+const publishModal = document.getElementById("publish-modal");
+const publishForm = document.getElementById("publish-form");
+const publishTopicInput = document.getElementById("publish-topic");
+const publishMessageInput = document.getElementById("publish-message");
+const openPublishModalBtn = document.getElementById("open-publish-modal-btn");
+const closePublishModalBtn = document.getElementById("close-publish-modal");
+const cancelPublishModalBtn = document.getElementById("cancel-publish-modal");
+const submitPublishMessageBtn = document.getElementById("submit-publish-message");
+let backendAvailable = false;
+let systemStatusCache = null;
 
 // Correspondance claire entre le bouton cliqué et la route FastAPI.
 const commandLabels = {
@@ -24,8 +41,21 @@ const commandLabels = {
   "stop-broker": "Arrêter Broker",
   "start-subscriber": "Démarrer Subscriber",
   "publish-temperature": "Envoyer Message",
+  "publish-message": "Envoyer Message",
   "restart-broker": "Redémarrer Broker",
   "open-terminal": "Ouvrir Terminal",
+  "verify-mqtt-port": "Vérifier le port 1883",
+};
+
+const commandRequirements = {
+  "start-broker": ["Mosquitto broker"],
+  "stop-broker": [],
+  "start-subscriber": ["Mosquitto subscriber"],
+  "publish-temperature": ["Mosquitto publisher"],
+  "publish-message": ["Mosquitto publisher"],
+  "restart-broker": ["Mosquitto broker"],
+  "open-terminal": [],
+  "verify-mqtt-port": [],
 };
 
 const viewMeta = {
@@ -66,6 +96,131 @@ function addLogLine(message, type = "INFO") {
   const line = `[${getTimestamp()}] [${type}] ${message}`;
   terminalLog.textContent += `\n${line}`;
   terminalLog.scrollTop = terminalLog.scrollHeight;
+}
+
+function getMissingDependencyNames() {
+  if (!systemStatusCache || !Array.isArray(systemStatusCache.items)) return [];
+  return systemStatusCache.items.filter((item) => !item.ok).map((item) => item.name);
+}
+
+function getCommandBlockReason(commandName) {
+  if (!backendAvailable) {
+    return "Le backend FastAPI n'est pas joignable.";
+  }
+
+  const missingNames = getMissingDependencyNames();
+  const requiredNames = commandRequirements[commandName] || [];
+  const blockedBy = requiredNames.find((name) => missingNames.includes(name));
+  if (blockedBy) {
+    return `${blockedBy} est manquant. Ouvrez Settings pour le détail.`;
+  }
+
+  return "";
+}
+
+function refreshCommandAvailability() {
+  document.querySelectorAll("[data-command]").forEach((button) => {
+    const commandName = button.dataset.command;
+    const reason = getCommandBlockReason(commandName);
+    button.disabled = Boolean(reason);
+    button.title = reason;
+    button.classList.toggle("is-disabled", Boolean(reason));
+  });
+
+  if (openPublishModalBtn) {
+    const reason = getCommandBlockReason("publish-message");
+    openPublishModalBtn.disabled = Boolean(reason);
+    openPublishModalBtn.title = reason;
+    openPublishModalBtn.classList.toggle("is-disabled", Boolean(reason));
+  }
+}
+
+async function pingBackend() {
+  try {
+    const response = await fetch(HEALTH_URL);
+    backendAvailable = response.ok;
+  } catch {
+    backendAvailable = false;
+  }
+  return backendAvailable;
+}
+
+function updateButtonFeedback(button, state, label) {
+  if (!button) return;
+
+  if (!button.dataset.defaultLabel) {
+    button.dataset.defaultLabel = button.textContent.trim();
+  }
+
+  button.classList.remove("is-loading", "is-success", "is-error");
+
+  if (state === "loading") {
+    button.classList.add("is-loading");
+    button.disabled = true;
+    button.textContent = label || "En cours...";
+    return;
+  }
+
+  if (state === "success") {
+    button.classList.add("is-success");
+    button.disabled = false;
+    button.textContent = label || "Succès";
+    window.setTimeout(() => updateButtonFeedback(button, "idle"), 1300);
+    return;
+  }
+
+  if (state === "error") {
+    button.classList.add("is-error");
+    button.disabled = false;
+    button.textContent = label || "Erreur";
+    window.setTimeout(() => updateButtonFeedback(button, "idle"), 1500);
+    return;
+  }
+
+  button.disabled = false;
+  button.textContent = button.dataset.defaultLabel;
+}
+
+function loadMessageHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(MESSAGE_HISTORY_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveMessageHistory(items) {
+  localStorage.setItem(MESSAGE_HISTORY_KEY, JSON.stringify(items.slice(-20)));
+}
+
+function renderMessageHistory() {
+  if (!messageList) return;
+
+  const items = loadMessageHistory();
+  if (!items.length) return;
+
+  messageList.innerHTML = "";
+  items.forEach((item) => appendMessageItem(item, false));
+}
+
+function appendMessageItem(item, persist = true) {
+  if (!messageList) return;
+
+  const li = document.createElement("li");
+  li.className = "message-item";
+  li.dataset.messageType = item.type;
+  li.innerHTML = `
+    <span class="message-dot ${item.type === "incoming" ? "incoming" : "outgoing"}"></span>
+    <span class="message-main">${item.message}</span>
+    <span class="message-meta">${item.topic} · ${item.type === "incoming" ? "Reçu" : "Envoyé"} · ${item.time}</span>
+  `;
+  messageList.prepend(li);
+
+  if (!persist) return;
+
+  const history = loadMessageHistory();
+  history.push(item);
+  saveMessageHistory(history);
 }
 
 function setBrokerStatus(status) {
@@ -130,6 +285,8 @@ function showView(viewName) {
 function renderSystemStatus(payload) {
   if (!dependencyReport || !systemStatusPill) return;
 
+  systemStatusCache = payload;
+
   const summary = Array.isArray(payload.summary) ? payload.summary.join("\n") : "Rapport indisponible.";
   dependencyReport.textContent = summary;
 
@@ -138,6 +295,7 @@ function renderSystemStatus(payload) {
     : `Attention (${payload.missing_count || 0} manquant)`;
   systemStatusPill.classList.toggle("ok", Boolean(payload.ok));
   systemStatusPill.classList.toggle("warning", !payload.ok);
+  refreshCommandAvailability();
 }
 
 async function loadSystemStatus() {
@@ -158,10 +316,12 @@ async function loadSystemStatus() {
     renderSystemStatus(payload);
     addLogLine("Rapport système chargé", "SYSTEM");
   } catch (error) {
+    systemStatusCache = null;
     dependencyReport.textContent = `Impossible de charger le statut système.\n${error.message}`;
     systemStatusPill.textContent = "Erreur";
     systemStatusPill.classList.add("warning");
     addLogLine(`Statut système indisponible: ${error.message}`, "ERROR");
+    refreshCommandAvailability();
   }
 }
 
@@ -195,11 +355,21 @@ function initTheme() {
   3. afficher la réponse JSON
   4. gérer les erreurs réseau / backend
 */
-async function runCommand(commandName) {
+async function runCommand(commandName, options = {}) {
   const label = commandLabels[commandName] || commandName;
+  const triggerButton = options.triggerButton;
+  const payloadBody = options.payloadBody;
+  const reason = getCommandBlockReason(commandName);
+
+  if (reason) {
+    addLogLine(`${label} bloqué: ${reason}`, "ERROR");
+    updateButtonFeedback(triggerButton, "error", "Indispo");
+    throw new Error(reason);
+  }
 
   // 1) Feedback immédiat dans le terminal.
   addLogLine(`Commande lancée : ${label}`, "INFO");
+  updateButtonFeedback(triggerButton, "loading", "En cours...");
 
   try {
     // 2) Appel POST vers le backend FastAPI.
@@ -208,6 +378,7 @@ async function runCommand(commandName) {
       headers: {
         "Content-Type": "application/json",
       },
+      body: payloadBody ? JSON.stringify(payloadBody) : undefined,
     });
 
     // On lit quand même la réponse pour pouvoir afficher l'erreur du backend.
@@ -219,6 +390,7 @@ async function runCommand(commandName) {
 
     // 3) Réponse réussie: on l'ajoute dans le terminal.
     addLogLine(JSON.stringify(payload), "API");
+    updateButtonFeedback(triggerButton, "success", "OK");
 
     // Petite logique visuelle pour refléter l'état du broker.
     if (commandName === "start-broker" || commandName === "restart-broker") {
@@ -228,9 +400,22 @@ async function runCommand(commandName) {
     if (commandName === "stop-broker") {
       setBrokerStatus("Déconnecté");
     }
+
+    if (commandName === "publish-message" && payload.topic && payload.payload) {
+      appendMessageItem({
+        type: "outgoing",
+        topic: payload.topic,
+        message: payload.payload,
+        time: getTimestamp(),
+      });
+    }
+
+    return payload;
   } catch (error) {
     // 4) Si FastAPI n'est pas lancé ou ne répond pas, on reste lisible.
     addLogLine(`Impossible de contacter FastAPI: ${error.message}`, "ERROR");
+    updateButtonFeedback(triggerButton, "error", "Erreur");
+    throw error;
   }
 }
 
@@ -239,8 +424,73 @@ function wireButtons() {
 
   document.querySelectorAll("[data-command]").forEach((button) => {
     button.addEventListener("click", () => {
-      runCommand(button.dataset.command);
+      runCommand(button.dataset.command, { triggerButton: button }).catch(() => {
+        // The log panel already explains the error to the user.
+      });
     });
+  });
+}
+
+function openPublishModal() {
+  if (!publishModal) return;
+  publishModal.hidden = false;
+  if (publishTopicInput) publishTopicInput.focus();
+}
+
+function closePublishModal() {
+  if (!publishModal) return;
+  publishModal.hidden = true;
+}
+
+function wirePublishModal() {
+  if (openPublishModalBtn) {
+    openPublishModalBtn.addEventListener("click", openPublishModal);
+  }
+
+  if (closePublishModalBtn) {
+    closePublishModalBtn.addEventListener("click", closePublishModal);
+  }
+
+  if (cancelPublishModalBtn) {
+    cancelPublishModalBtn.addEventListener("click", closePublishModal);
+  }
+
+  if (publishModal) {
+    publishModal.addEventListener("click", (event) => {
+      if (event.target === publishModal) {
+        closePublishModal();
+      }
+    });
+  }
+
+  if (!publishForm) return;
+
+  publishForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const reason = getCommandBlockReason("publish-message");
+    if (reason) {
+      addLogLine(`Envoi bloqué: ${reason}`, "ERROR");
+      return;
+    }
+
+    const topic = publishTopicInput ? publishTopicInput.value.trim() : "";
+    const message = publishMessageInput ? publishMessageInput.value.trim() : "";
+
+    if (!topic || !message) {
+      addLogLine("Le topic et le message sont obligatoires.", "ERROR");
+      return;
+    }
+
+    try {
+      await runCommand("publish-message", {
+        triggerButton: submitPublishMessageBtn,
+        payloadBody: { topic, message },
+      });
+      closePublishModal();
+    } catch {
+      // The error is already visible in the logs.
+    }
   });
 }
 
@@ -281,7 +531,19 @@ function wireSettingsActions() {
 
 function seedInitialLog() {
   addLogLine("Dashboard chargé");
-  addLogLine("Prêt à exécuter les commandes MQTT");
+  addLogLine("Vérification du backend et des dépendances...");
+}
+
+async function bootstrapDashboard() {
+  await pingBackend();
+  if (!backendAvailable) {
+    addLogLine("Backend FastAPI indisponible. Vérifiez le launcher.", "ERROR");
+    refreshCommandAvailability();
+    return;
+  }
+
+  addLogLine("Backend FastAPI joignable.", "SYSTEM");
+  await loadSystemStatus();
 }
 
 // Initialisation de l'interface.
@@ -290,5 +552,8 @@ wireNavigation();
 wireLogout();
 wireThemeToggle();
 wireSettingsActions();
+wirePublishModal();
 initTheme();
+renderMessageHistory();
 seedInitialLog();
+bootstrapDashboard();

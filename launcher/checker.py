@@ -4,6 +4,7 @@ import importlib.util
 import shutil
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List
 
 
@@ -71,10 +72,31 @@ def module_item(display_name: str, module_name: str) -> DependencyItem:
 
 
 def command_item(category: str, display_name: str, command_name: str, hint: str) -> DependencyItem:
-    path = shutil.which(command_name)
+    path = resolve_command_path(command_name)
     ok = path is not None
     detail = path if ok else hint
     return DependencyItem(category, display_name, ok, detail)
+
+
+def resolve_command_path(command_name: str) -> str | None:
+    path = shutil.which(command_name)
+    if path:
+        return path
+
+    candidates = []
+    if sys.platform.startswith("win"):
+        candidates.extend(
+            [
+                Path("C:/Program Files/mosquitto") / f"{command_name}.exe",
+                Path("C:/Program Files (x86)/mosquitto") / f"{command_name}.exe",
+            ]
+        )
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+
+    return None
 
 
 def build_dependency_report() -> DependencyReport:
