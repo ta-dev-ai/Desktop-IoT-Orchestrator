@@ -130,7 +130,21 @@ class LauncherWindow(QMainWindow):
 
     def refresh_report(self) -> None:
         report = self.checker()
-        self.status_label.setText(f"Status: {'ready' if report.ok else 'attention needed'}")
+        if report.ok:
+            self.status_label.setText("Status: ready")
+            self.status_label.setStyleSheet("font-size: 16px; font-weight: 600; color: #15803d;")
+        else:
+            missing_count = len(report.missing_items)
+            self.status_label.setText(f"Status: attention needed ({missing_count} missing)")
+            self.status_label.setStyleSheet("font-size: 16px; font-weight: 600; color: #b45309;")
+
+        # Mosquitto can be installed later, but the launcher/backend need Python modules.
+        blocking_missing = [
+            item
+            for item in report.missing_items
+            if item.category in {"Runtime", "Python modules"}
+        ]
+        self.launch_btn.setEnabled(not blocking_missing)
         self.report_view.setPlainText("\n".join(report.summary_lines()))
 
     def launch_project(self) -> None:
