@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MQTT Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-hover: #16a34a;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(34, 197, 94, 0.22), transparent 30%),
+        linear-gradient(180deg, #020617 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 20px;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(10px);
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+
+    button {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      background: var(--accent);
+      color: #052e16;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    li + li {
+      margin-top: 10px;
+    }
+
+    pre {
+      margin: 0;
+      min-height: 220px;
+      background: #020617;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      color: #86efac;
+      border-radius: 12px;
+      padding: 14px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>MQTT Dashboard</h1>
+    <p>Interface simple pour piloter le broker, le subscriber et l'envoi de messages.</p>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Actions</h2>
+        <button onclick="callAPI('/start-broker')">Start Broker</button>
+        <button onclick="callAPI('/subscribe')">Start Subscriber</button>
+        <button onclick="callAPI('/publish')">Send Message</button>
+      </div>
+
+      <div class="card">
+        <h2>Commandes</h2>
+        <ul>
+          <li><code>mosquitto -v</code></li>
+          <li><code>mosquitto_sub -h localhost -t temperature</code></li>
+          <li><code>mosquitto_pub -h localhost -t temperature -m "25°C"</code></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Logs</h2>
+        <pre id="logs">En attente d'action...</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function callAPI(route) {
+      const logs = document.getElementById("logs");
+      logs.textContent = "Chargement...";
+
+      try {
+        const response = await fetch(route, { method: "POST" });
+        const data = await response.json();
+        logs.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        logs.textContent = JSON.stringify({ error: String(error) }, null, 2);
+      }
+    }
+  </script>
+</body>
+</html>
+
