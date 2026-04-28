@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, QProcess
+from PySide6.QtCore import Qt, QTimer, QUrl, QProcess
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -30,9 +30,10 @@ class LauncherWindow(QMainWindow):
         self.project_root = project_root
         self.checker = checker
         self.backend_process: QProcess | None = None
+        self.dashboard_view: QWebEngineView | None = None
 
         self.setWindowTitle("MQTT Control Launcher")
-        self.resize(1400, 900)
+        self.resize(1720, 940)
 
         self._build_ui()
 
@@ -97,7 +98,7 @@ class LauncherWindow(QMainWindow):
 
         splitter.addWidget(left_panel)
         splitter.addWidget(right_panel)
-        splitter.setSizes([420, 900])
+        splitter.setSizes([520, 1180])
 
         layout.addWidget(splitter, stretch=1)
         self.setCentralWidget(root)
@@ -106,10 +107,10 @@ class LauncherWindow(QMainWindow):
 
     def _build_dashboard_widget(self) -> QWidget:
         if QWebEngineView is not None:
-            view = QWebEngineView()
-            dashboard_file = self.project_root / "mqtt-dashboard" / "index.html"
-            view.setUrl(QUrl.fromLocalFile(str(dashboard_file)))
-            return view
+            self.dashboard_view = QWebEngineView()
+            self.dashboard_view.setZoomFactor(0.82)
+            self._load_local_dashboard()
+            return self.dashboard_view
 
         fallback = QWidget()
         layout = QVBoxLayout(fallback)
@@ -161,20 +162,34 @@ class LauncherWindow(QMainWindow):
         self.backend_process.setArguments(["-m", "uvicorn", "app.main:app", "--reload"])
         self.backend_process.readyReadStandardOutput.connect(self._read_backend_output)
         self.backend_process.readyReadStandardError.connect(self._read_backend_error)
+        self.backend_process.started.connect(lambda: QTimer.singleShot(1500, self._load_server_dashboard))
         self.backend_process.start()
         self.log("FastAPI backend started.")
 
     def open_dashboard(self) -> None:
-        dashboard_file = self.project_root / "mqtt-dashboard" / "index.html"
         if QWebEngineView is None:
             import webbrowser
 
-            webbrowser.open(dashboard_file.as_uri())
+            webbrowser.open("http://127.0.0.1:8000/dashboard")
             self.log("Dashboard opened in the default browser.")
             return
 
+        self._load_server_dashboard()
         self.dashboard_tabs.setCurrentIndex(0)
-        self.log("Dashboard shown inside the launcher.")
+        self.log("Dashboard shown from FastAPI inside the launcher.")
+
+    def _load_local_dashboard(self) -> None:
+        if self.dashboard_view is None:
+            return
+
+        dashboard_file = self.project_root / "mqtt-dashboard" / "index.html"
+        self.dashboard_view.setUrl(QUrl.fromLocalFile(str(dashboard_file)))
+
+    def _load_server_dashboard(self) -> None:
+        if self.dashboard_view is None:
+            return
+
+        self.dashboard_view.setUrl(QUrl("http://127.0.0.1:8000/dashboard"))
 
     def _read_backend_output(self) -> None:
         if not self.backend_process:
