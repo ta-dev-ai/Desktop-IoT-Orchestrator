@@ -10,6 +10,7 @@ from typing import Deque, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from launcher.checker import build_dependency_report
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -97,6 +98,26 @@ def health() -> dict[str, str]:
 @app.get("/logs")
 def logs() -> dict[str, list[dict[str, str]]]:
     return {"logs": list(LOGS)}
+
+
+@app.get("/api/system/status")
+def system_status() -> dict[str, object]:
+    report = build_dependency_report()
+    return {
+        "ok": report.ok,
+        "missing_count": len(report.missing_items),
+        "items": [
+            {
+                "category": item.category,
+                "name": item.name,
+                "ok": item.ok,
+                "status": item.status,
+                "detail": item.detail,
+            }
+            for item in report.items
+        ],
+        "summary": report.summary_lines(),
+    }
 
 
 @app.post("/api/commands/start-broker")
