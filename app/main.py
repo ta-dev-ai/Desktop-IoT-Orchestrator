@@ -411,6 +411,55 @@ def dashboard_devices_module_script():
     )
 
 
+@app.get("/publish-visual-fallback.js")
+def dashboard_publish_visual_fallback_script():
+    return FileResponse(
+        DASHBOARD_DIR / "publish-visual-fallback.js",
+        media_type="application/javascript",
+    )
+
+
+def _resolve_dashboard_file(filename: str):
+    mqtt_candidate = DASHBOARD_DIR / filename
+    if mqtt_candidate.exists():
+        return mqtt_candidate
+
+    legacy_candidate = ROOT_DIR / "frontend" / filename
+    if legacy_candidate.exists():
+        return legacy_candidate
+
+    return None
+
+
+@app.middleware("http")
+async def ensure_dashboard_routes(request, call_next):
+    from fastapi.responses import JSONResponse
+
+    path = request.url.path
+    dashboard_asset_types = {
+        "/style.css": "text/css",
+        "/script.js": "application/javascript",
+        "/launcher-bridge.js": "application/javascript",
+        "/button-fallback.js": "application/javascript",
+        "/publish-visual-fallback.js": "application/javascript",
+        "/devices-module.js": "application/javascript",
+    }
+
+    if path in {"/", "/index.html", "/dashboard", "/dashboard/"}:
+        dashboard_file = _resolve_dashboard_file("index.html")
+        if dashboard_file:
+            return FileResponse(dashboard_file, media_type="text/html")
+        return JSONResponse({"detail": "Frontend introuvable."}, status_code=404)
+
+    if path in dashboard_asset_types:
+        asset_file = _resolve_dashboard_file(path.lstrip("/"))
+        if asset_file:
+            return FileResponse(asset_file, media_type=dashboard_asset_types[path])
+        return JSONResponse({"detail": f"Asset introuvable: {path}"}, status_code=404)
+
+    return await call_next(request)
+
+
 DEVICES_DATA_FILE = ROOT_DIR / "data" / "devices.json"
 
 
@@ -570,6 +619,9 @@ def get_device_status(device_id: str):
 
 
 if __name__ == "__main__":
+    print("Backend FastAPI démarré.")
+    print("Pour ouvrir la fenêtre desktop, lance : python main.py")
+    print("Ou bien : python launcher\\ui.py")
     import uvicorn
 
     uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MQTT Control Redirect</title>
+    <meta http-equiv="refresh" content="0; url=/dashboard" />
+    <script>
+      window.location.replace("/dashboard");
+    </script>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+
+      .card {
+        padding: 24px;
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        text-align: center;
+      }
+
+      a {
+        color: #4f46e5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p>Redirection vers le dashboard MQTT...</p>
+      <p><a href="/dashboard">Ouvrir le dashboard</a></p>
+    </div>
+  </body>
+</html>
