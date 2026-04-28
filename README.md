@@ -52,9 +52,14 @@ smart_controlle_mosquitto/
 │   └── gif/
 │       └── Enregistrement 2026-04-28 123440.gif
 ├── doc/
-│   └── launcher_plan.md
+│   ├── install.md
+│   ├── launcher_plan.md
+│   └── venv.md
+├── scripts/
+│   └── install.ps1
 ├── source_projet/
 ├── requirements.txt
+├── package.json
 └── README.md
 ```
 
@@ -91,6 +96,13 @@ The launcher will:
 - verify dependencies
 - start the backend
 - display the dashboard
+
+## Local setup helpers
+
+- `doc/venv.md` explains how to create and use the Python virtual environment
+- `scripts/install.ps1` installs Python dependencies automatically
+- `package.json` provides a minimal Node.js project shell for the dashboard script
+- `npm run check` validates the dashboard JavaScript syntax with Node.js
 
 ## MQTT commands used by the project
 

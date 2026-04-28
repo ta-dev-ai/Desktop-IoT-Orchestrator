@@ -1,0 +1,10 @@
+{
+  "name": "desktop-iot-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop IoT control suite with a PySide6 launcher, FastAPI backend, and MQTT dashboard.",
+  "scripts": {
+    "check": "node --check mqtt-dashboard/script.js",
+    "info": "node -e \"console.log('Desktop IoT Orchestrator uses vanilla JS for the dashboard.')\""
+  }
+}
