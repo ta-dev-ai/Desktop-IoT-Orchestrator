@@ -1,0 +1,241 @@
+{
+  "gps_version": "1.0.0",
+  "project_name": "Desktop IoT Orchestrator",
+  "project_display_name": "MQTT Control Launcher / MQTT Dashboard",
+  "purpose": "Application desktop Windows pour piloter un backend FastAPI, un broker Mosquitto local, publier des messages MQTT, écouter des topics et préparer la gestion d'appareils externes.",
+  "governance_goal": "Réduire les hallucinations IA en donnant une vue structurée du repo, des responsabilités des fichiers et des règles de mise à jour.",
+  "root_rules": {
+    "archive_policy": "Ne pas supprimer directement. Archiver d'abord quand c'est pertinent.",
+    "mvp_policy": "La version active est la V1 MVP. Les idées futures restent séparées dans planning/v_2.",
+    "gps_update_rule": "Mettre à jour ce fichier quand la structure, le rôle d'un module, ou un flux fonctionnel important change."
+  },
+  "key_flows": [
+    {
+      "name": "launcher_boot",
+      "description": "Le launcher vérifie l'environnement, démarre FastAPI et ouvre le dashboard embarqué."
+    },
+    {
+      "name": "dashboard_to_backend",
+      "description": "Le dashboard vanilla HTML/CSS/JS appelle FastAPI avec fetch pour exécuter les commandes MQTT."
+    },
+    {
+      "name": "mqtt_publish_flow",
+      "description": "Le dashboard demande une publication, FastAPI lance mosquitto_pub, Mosquitto distribue le message aux abonnés."
+    },
+    {
+      "name": "devices_module",
+      "description": "Le module appareils MQTT enregistre des appareils externes, prépare leur configuration et expose une vue de statut configuré."
+    }
+  ],
+  "tree": [
+    {
+      "path": ".ia_governance",
+      "type": "directory",
+      "role": "Couche de gouvernance IA du projet.",
+      "children": [
+        {
+          "path": ".ia_governance/README.md",
+          "type": "file",
+          "role": "Point d'entrée de la gouvernance IA."
+        },
+        {
+          "path": ".ia_governance/project_gps.json",
+          "type": "file",
+          "role": "Carte structurée du projet et des responsabilités."
+        },
+        {
+          "path": ".ia_governance/update_policy.md",
+          "type": "file",
+          "role": "Règles de mise à jour du GPS."
+        }
+      ]
+    },
+    {
+      "path": "app",
+      "type": "directory",
+      "role": "Backend FastAPI et orchestration des commandes système/MQTT.",
+      "children": [
+        {
+          "path": "app/main.py",
+          "type": "file",
+          "role": "Entrée principale FastAPI. Sert le dashboard, les routes API, le check système, les commandes MQTT et le module appareils."
+        }
+      ]
+    },
+    {
+      "path": "launcher",
+      "type": "directory",
+      "role": "Application desktop PySide6 qui démarre FastAPI, embarque le dashboard et affiche les diagnostics.",
+      "children": [
+        {
+          "path": "launcher/ui.py",
+          "type": "file",
+          "role": "Fenêtre principale desktop, boot automatique, settings et fermeture contrôlée."
+        },
+        {
+          "path": "launcher/checker.py",
+          "type": "file",
+          "role": "Vérification des dépendances Python, Node et Mosquitto, avec détection Windows."
+        }
+      ]
+    },
+    {
+      "path": "mqtt-dashboard",
+      "type": "directory",
+      "role": "Interface web vanilla du projet.",
+      "children": [
+        {
+          "path": "mqtt-dashboard/index.html",
+          "type": "file",
+          "role": "Structure HTML du dashboard, des actions, des logs, des messages et du module appareils."
+        },
+        {
+          "path": "mqtt-dashboard/style.css",
+          "type": "file",
+          "role": "Styles du dashboard, cartes KPI, modal, états des boutons et UI responsive."
+        },
+        {
+          "path": "mqtt-dashboard/script.js",
+          "type": "file",
+          "role": "Logique principale du dashboard: boutons, navigation, logs, publish modal, pré-vérifications et fetch API."
+        },
+        {
+          "path": "mqtt-dashboard/button-fallback.js",
+          "type": "file",
+          "role": "Correctif MVP pour débloquer les boutons si la couche frontend les désactive à tort."
+        },
+        {
+          "path": "mqtt-dashboard/launcher-bridge.js",
+          "type": "file",
+          "role": "Pont pour forcer les appels fetch vers http://127.0.0.1:8000 dans la fenêtre desktop et enrichir les timestamps des messages."
+        },
+        {
+          "path": "mqtt-dashboard/devices-module.js",
+          "type": "file",
+          "role": "Module MVP Appareils MQTT: ajout, liste, suppression, configuration MQTT et statut configuré."
+        }
+      ]
+    },
+    {
+      "path": "data",
+      "type": "directory",
+      "role": "Données locales persistées du projet.",
+      "children": [
+        {
+          "path": "data/devices.json",
+          "type": "file",
+          "role": "Registre JSON MVP des appareils MQTT externes."
+        }
+      ]
+    },
+    {
+      "path": "doc",
+      "type": "directory",
+      "role": "Documentation fonctionnelle et architecture métier.",
+      "children": [
+        {
+          "path": "doc/communication_fastapi_mqtt_appareils.md",
+          "type": "file",
+          "role": "Explique les rôles de FastAPI, Mosquitto, les appareils externes et leur communication."
+        },
+        {
+          "path": "doc/ia_governance_gps.md",
+          "type": "file",
+          "role": "Documentation de la gouvernance IA et du GPS du projet."
+        }
+      ]
+    },
+    {
+      "path": "planning",
+      "type": "directory",
+      "role": "Plans, roadmaps, scénarios MVP et documents de cadrage.",
+      "children": [
+        {
+          "path": "planning/use_case_et_fonctionnalites_v1.md",
+          "type": "file",
+          "role": "Use cases et fonctionnalités V1."
+        },
+        {
+          "path": "planning/frontend_backend_fonctionnalites_v1.md",
+          "type": "file",
+          "role": "Correspondance frontend/backend des fonctionnalités."
+        },
+        {
+          "path": "planning/scenarios_et_ecarts_mvp_v1.md",
+          "type": "file",
+          "role": "Scénarios MVP et écarts identifiés."
+        },
+        {
+          "path": "planning/module_connexion_appareils_mqtt.md",
+          "type": "file",
+          "role": "Plan du module appareils MQTT pour compléter le prototype."
+        },
+        {
+          "path": "planning/v_2",
+          "type": "directory",
+          "role": "Zone des idées et plans V2, séparée de la V1 active."
+        }
+      ]
+    },
+    {
+      "path": "archive",
+      "type": "directory",
+      "role": "Historique archivé du projet. Utilisé au lieu d'une suppression directe."
+    },
+    {
+      "path": "public",
+      "type": "directory",
+      "role": "Assets publics, dont GIF et ressources de présentation."
+    },
+    {
+      "path": "scripts",
+      "type": "directory",
+      "role": "Scripts utilitaires projet si présents."
+    },
+    {
+      "path": "source_projet",
+      "type": "directory",
+      "role": "Source ou matériaux du projet d'origine conservés dans le repo."
+    },
+    {
+      "path": "temp_local",
+      "type": "directory",
+      "role": "Zone temporaire locale si utilisée."
+    },
+    {
+      "path": ".venv",
+      "type": "directory",
+      "role": "Environnement virtuel Python local. Dépendance technique, pas module métier."
+    },
+    {
+      "path": "README.md",
+      "type": "file",
+      "role": "Documentation principale du projet."
+    },
+    {
+      "path": "requirements.txt",
+      "type": "file",
+      "role": "Dépendances Python du projet."
+    },
+    {
+      "path": "package.json",
+      "type": "file",
+      "role": "Outillage JavaScript minimal du projet."
+    },
+    {
+      "path": ".gitignore",
+      "type": "file",
+      "role": "Règles Git d'exclusion."
+    },
+    {
+      "path": "LICENSE",
+      "type": "file",
+      "role": "Licence du projet."
+    }
+  ],
+  "known_limits": [
+    "Le module appareils MQTT est en MVP: il gère l'enregistrement, la configuration et le statut configuré, mais pas encore l'ACK réel d'un appareil distant.",
+    "Le dashboard mélange encore UI de démonstration et logique réelle sur certaines zones de logs/messages.",
+    "Le launcher et le dashboard ont connu plusieurs itérations; vérifier le GPS après toute refonte majeure."
+  ]
+}

@@ -403,6 +403,172 @@ def dashboard_launcher_bridge_script():
     )
 
 
+@app.get("/devices-module.js")
+def dashboard_devices_module_script():
+    return FileResponse(
+        DASHBOARD_DIR / "devices-module.js",
+        media_type="application/javascript",
+    )
+
+
+DEVICES_DATA_FILE = ROOT_DIR / "data" / "devices.json"
+
+
+def _ensure_devices_store():
+    import json
+
+    DEVICES_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    if not DEVICES_DATA_FILE.exists():
+        DEVICES_DATA_FILE.write_text("[]", encoding="utf-8")
+
+    try:
+        data = json.loads(DEVICES_DATA_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return
+    except Exception:
+        pass
+
+    DEVICES_DATA_FILE.write_text("[]", encoding="utf-8")
+
+
+def _load_devices():
+    import json
+
+    _ensure_devices_store()
+    try:
+        data = json.loads(DEVICES_DATA_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return data
+    except Exception:
+        pass
+    return []
+
+
+def _save_devices(devices):
+    import json
+
+    _ensure_devices_store()
+    DEVICES_DATA_FILE.write_text(
+        json.dumps(devices, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _build_device_mqtt_config(device):
+    broker_host = "127.0.0.1"
+    broker_port = 1883
+    topics_sub = device.get("topics_sub") or []
+    topics_pub = device.get("topics_pub") or []
+    primary_topic = topics_sub[0] if topics_sub else (topics_pub[0] if topics_pub else "temperature")
+    return {
+        "broker_host": broker_host,
+        "broker_port": broker_port,
+        "primary_topic": primary_topic,
+        "topics_sub": topics_sub,
+        "topics_pub": topics_pub,
+        "subscribe_example": f"mosquitto_sub -h {broker_host} -p {broker_port} -t {primary_topic}",
+        "publish_example": f'mosquitto_pub -h {broker_host} -p {broker_port} -t {primary_topic} -m "test"',
+    }
+
+
+@app.get("/api/devices")
+def list_devices():
+    devices = _load_devices()
+    return {
+        "ok": True,
+        "count": len(devices),
+        "items": devices,
+    }
+
+
+@app.post("/api/devices")
+def create_device(
+    name: str,
+    device_type: str = "generic",
+    host: str = "",
+    role: str = "subscriber",
+    topics_sub: str = "",
+    topics_pub: str = "",
+    notes: str = "",
+):
+    import uuid
+    from datetime import datetime
+
+    devices = _load_devices()
+    item = {
+        "id": f"device-{uuid.uuid4().hex[:8]}",
+        "name": name.strip() or "Appareil MQTT",
+        "type": device_type.strip() or "generic",
+        "host": host.strip(),
+        "role": role.strip() or "subscriber",
+        "topics_sub": [value.strip() for value in topics_sub.split(",") if value.strip()],
+        "topics_pub": [value.strip() for value in topics_pub.split(",") if value.strip()],
+        "notes": notes.strip(),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+    devices.append(item)
+    _save_devices(devices)
+    return {
+        "ok": True,
+        "message": "Appareil ajouté.",
+        "item": item,
+        "mqtt_config": _build_device_mqtt_config(item),
+    }
+
+
+@app.delete("/api/devices/{device_id}")
+def delete_device(device_id: str):
+    devices = _load_devices()
+    kept = [item for item in devices if item.get("id") != device_id]
+    deleted = len(kept) != len(devices)
+    if deleted:
+        _save_devices(kept)
+    return {
+        "ok": deleted,
+        "message": "Appareil supprimé." if deleted else "Appareil introuvable.",
+        "count": len(kept),
+    }
+
+
+@app.get("/api/devices/{device_id}/mqtt-config")
+def get_device_mqtt_config(device_id: str):
+    devices = _load_devices()
+    for item in devices:
+        if item.get("id") == device_id:
+            return {
+                "ok": True,
+                "item": item,
+                "mqtt_config": _build_device_mqtt_config(item),
+            }
+    return {
+        "ok": False,
+        "message": "Appareil introuvable.",
+    }
+
+
+@app.get("/api/devices/{device_id}/status")
+def get_device_status(device_id: str):
+    devices = _load_devices()
+    for item in devices:
+        if item.get("id") == device_id:
+            config = _build_device_mqtt_config(item)
+            return {
+                "ok": True,
+                "item": item,
+                "status": {
+                    "broker_ready": True,
+                    "mqtt_port": config["broker_port"],
+                    "mqtt_host": config["broker_host"],
+                    "last_seen": item.get("created_at"),
+                    "state": "configured",
+                },
+            }
+    return {
+        "ok": False,
+        "message": "Appareil introuvable.",
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 
