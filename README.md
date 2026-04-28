@@ -51,6 +51,8 @@ smart_controlle_mosquitto/
 ├── public/
 │   └── gif/
 │       └── Enregistrement 2026-04-28 123440.gif
+├── doc/
+│   └── launcher_plan.md
 ├── source_projet/
 ├── requirements.txt
 └── README.md
@@ -104,4 +106,3 @@ environment variables:
 - `MOSQUITTO_BIN`
 - `MOSQUITTO_SUB_BIN`
 - `MOSQUITTO_PUB_BIN`
-
