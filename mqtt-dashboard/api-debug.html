@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MQTT Control - API Debug</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+
+      p {
+        color: #475569;
+      }
+
+      button,
+      a.button {
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 14px;
+        background: #ffffff;
+        color: #0f172a;
+        text-decoration: none;
+        cursor: pointer;
+        font-weight: 700;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      button.primary {
+        background: #2563eb;
+        color: white;
+        border-color: #1d4ed8;
+      }
+
+      .config-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: center;
+      }
+
+      .input-group {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      input[type='text'] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-family: inherit;
+      }
+
+      label {
+        font-weight: 700;
+        font-size: 14px;
+        color: #475569;
+      }
+
+      .identity-card {
+        padding: 12px 16px;
+        background: #f1f5f9;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .identity-card .label {
+        display: block;
+        font-size: 12px;
+        color: #64748b;
+        margin-bottom: 4px;
+      }
+
+      .identity-card.found {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #166534;
+      }
+
+      .identity-card.wrong {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+      }
+
+      .panel {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+
+      .route {
+        display: grid;
+        grid-template-columns: 180px 1fr 120px;
+        gap: 16px;
+        align-items: start;
+        padding: 16px 0;
+        border-bottom: 1px solid #f1f5f9;
+      }
+
+      .route:last-child {
+        border-bottom: 0;
+      }
+
+      code {
+        background: #f1f5f9;
+        color: #1e293b;
+        border-radius: 6px;
+        padding: 3px 6px;
+        font-size: 13px;
+      }
+
+      pre {
+        margin: 8px 0 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.4;
+        border: 1px solid #1e293b;
+      }
+
+      .ok {
+        color: #10b981;
+      }
+      .fail {
+        color: #ef4444;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>API Debug & Diagnostics</h1>
+          <p>Test direct des routes FastAPI et validation de l'identité du backend.</p>
+        </div>
+        <div class="actions">
+          <a class="button" href="/">Dashboard</a>
+          <button id="run-all" class="primary">Tester toutes les routes</button>
+        </div>
+      </header>
+
+      <section class="panel config-panel">
+        <div class="config-grid">
+          <div>
+            <label for="origin-input">Backend URL</label>
+            <div class="input-group">
+              <input type="text" id="origin-input" value="http://127.0.0.1:8000" />
+              <button id="update-origin">Actualiser</button>
+            </div>
+          </div>
+          <div id="identity-check" class="identity-card">
+            <span class="label">Identité détectée :</span>
+            <strong id="backend-id">Recherche...</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="routes"></section>
+    </main>
+
+    <script src="api-debug.js"></script>
+  </body>
+</html>

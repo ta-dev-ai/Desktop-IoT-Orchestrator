@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import command_routes, device_routes, frontend_routes, system_routes
+from app.services import debug_service
 
 
 app = FastAPI(title="MQTT Control API")
@@ -23,7 +24,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def debug_request_logger(request, call_next):
+    debug_service.add_event(
+        "request",
+        f"{request.method} {request.url.path}",
+        method=request.method,
+        path=request.url.path,
+    )
+    response = await call_next(request)
+    debug_service.add_event(
+        "response",
+        f"{request.method} {request.url.path} -> {response.status_code}",
+        method=request.method,
+        path=request.url.path,
+        status_code=response.status_code,
+    )
+    return response
+
 app.include_router(command_routes.router)
+app.include_router(command_routes.legacy_router)
 app.include_router(system_routes.router)
 app.include_router(device_routes.router)
 app.include_router(frontend_routes.router)

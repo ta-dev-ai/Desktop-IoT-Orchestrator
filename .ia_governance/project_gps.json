@@ -133,6 +133,16 @@
           "path": "mqtt-dashboard/devices-module.js",
           "type": "file",
           "role": "Module MVP Appareils MQTT: ajout, liste, suppression, configuration MQTT et statut configuré."
+        },
+        {
+          "path": "mqtt-dashboard/api-debug.html",
+          "type": "file",
+          "role": "Page de diagnostic navigateur pour tester les routes FastAPI une par une."
+        },
+        {
+          "path": "mqtt-dashboard/api-debug.js",
+          "type": "file",
+          "role": "Logique de test des endpoints API depuis la page api-debug.html."
         }
       ]
     },

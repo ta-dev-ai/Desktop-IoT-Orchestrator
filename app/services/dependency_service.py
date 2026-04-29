@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import shutil
 from pathlib import Path
 
@@ -12,8 +13,20 @@ MOSQUITTO_PATHS = [
     Path(r"C:\Program Files (x86)\mosquitto"),
 ]
 
+COMMAND_ENV_VARS = {
+    "mosquitto": "MOSQUITTO_BIN",
+    "mosquitto_sub": "MOSQUITTO_SUB_BIN",
+    "mosquitto_pub": "MOSQUITTO_PUB_BIN",
+}
+
 
 def resolve_command(command: str) -> str | None:
+    env_name = COMMAND_ENV_VARS.get(command)
+    if env_name:
+        configured = os.environ.get(env_name)
+        if configured and Path(configured).exists():
+            return configured
+
     found = shutil.which(command)
     if found:
         return found

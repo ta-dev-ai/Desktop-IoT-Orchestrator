@@ -15,6 +15,7 @@ from app.services import mosquitto_service
 
 
 router = APIRouter(prefix="/api/commands", tags=["commands"])
+legacy_router = APIRouter(tags=["legacy commands"])
 
 
 @router.post("/start-broker")
@@ -69,3 +70,26 @@ def open_terminal():
 def verify_mqtt_port():
     """Check whether the MQTT port is reachable locally."""
     return mosquitto_service.verify_mqtt_port()
+
+
+@legacy_router.post("/start-broker")
+def legacy_start_broker():
+    """Legacy route kept for older Swagger/manual tests."""
+    return mosquitto_service.start_broker()
+
+
+@legacy_router.post("/subscribe")
+def legacy_subscribe():
+    """Legacy route kept for older Swagger/manual tests."""
+    return mosquitto_service.start_subscriber()
+
+
+@legacy_router.post("/publish")
+def legacy_publish(payload: dict | None = None):
+    """Legacy route kept for older Swagger/manual tests."""
+    payload = payload or {}
+    message = str(payload.get("message") or payload.get("payload") or "25°C")
+    topic = str(payload.get("topic") or "temperature")
+    return mosquitto_service.publish_message(
+        PublishMessagePayload(topic=topic, message=message)
+    )

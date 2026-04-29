@@ -9,6 +9,7 @@ import subprocess
 from app.core import processes
 from app.core.paths import ROOT_DIR
 from app.models.payloads import PublishMessagePayload
+from app.services import debug_service
 from app.services.dependency_service import resolve_command
 
 
@@ -20,11 +21,14 @@ def _missing_response(tool: str) -> dict:
 
 
 def start_broker() -> dict:
+    debug_service.add_event("command", "start_broker requested.")
     if processes.is_process_running(processes.broker_process):
+        debug_service.add_event("command", "broker already running.")
         return {"ok": True, "message": "Broker déjà démarré."}
 
     command = resolve_command("mosquitto")
     if not command:
+        debug_service.add_event("error", "mosquitto command missing.")
         return _missing_response("mosquitto")
 
     processes.broker_process = subprocess.Popen(
@@ -42,6 +46,7 @@ def start_broker() -> dict:
 
 
 def stop_broker() -> dict:
+    debug_service.add_event("command", "stop_broker requested.")
     stopped = processes.stop_process(processes.broker_process)
     processes.broker_process = None
     return {
@@ -51,11 +56,13 @@ def stop_broker() -> dict:
 
 
 def start_subscriber(topic: str = "temperature") -> dict:
+    debug_service.add_event("command", f"start_subscriber requested for {topic}.")
     if processes.is_process_running(processes.subscriber_process):
         return {"ok": True, "message": "Subscriber déjà démarré."}
 
     command = resolve_command("mosquitto_sub")
     if not command:
+        debug_service.add_event("error", "mosquitto_sub command missing.")
         return _missing_response("mosquitto_sub")
 
     processes.subscriber_process = subprocess.Popen(
@@ -73,6 +80,7 @@ def start_subscriber(topic: str = "temperature") -> dict:
 
 
 def stop_subscriber() -> dict:
+    debug_service.add_event("command", "stop_subscriber requested.")
     stopped = processes.stop_process(processes.subscriber_process)
     processes.subscriber_process = None
     return {
@@ -82,8 +90,15 @@ def stop_subscriber() -> dict:
 
 
 def publish_message(payload: PublishMessagePayload) -> dict:
+    debug_service.add_event(
+        "command",
+        "publish_message requested.",
+        topic=payload.topic,
+        message=payload.message,
+    )
     command = resolve_command("mosquitto_pub")
     if not command:
+        debug_service.add_event("error", "mosquitto_pub command missing.")
         return _missing_response("mosquitto_pub")
 
     completed = subprocess.run(
@@ -94,6 +109,12 @@ def publish_message(payload: PublishMessagePayload) -> dict:
         timeout=10,
     )
     if completed.returncode != 0:
+        debug_service.add_event(
+            "error",
+            "mosquitto_pub failed.",
+            stderr=completed.stderr,
+            stdout=completed.stdout,
+        )
         return {
             "ok": False,
             "message": completed.stderr.strip() or completed.stdout.strip() or "Publication échouée.",
