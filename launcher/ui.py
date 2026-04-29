@@ -4,6 +4,7 @@ import json
 import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
@@ -88,7 +89,9 @@ class LauncherWindow(QMainWindow):
 
         self.alert_label = QLabel("")
         self.alert_label.setWordWrap(False)
-        self.alert_label.setStyleSheet("color: #9a3412; font-weight: 600; font-size: 12px;")
+        self.alert_label.setStyleSheet(
+            "color: #9a3412; font-weight: 600; font-size: 12px;"
+        )
 
         self.alert_settings_btn = QPushButton("Voir Settings")
         self.alert_settings_btn.clicked.connect(lambda: self._show_page("settings"))
@@ -122,8 +125,12 @@ class LauncherWindow(QMainWindow):
         title_box = QVBoxLayout()
 
         self.page_title = QLabel("MQTT Control Launcher")
-        self.page_title.setStyleSheet("font-size: 20px; font-weight: 700; color: #0f172a;")
-        self.page_subtitle = QLabel("Le dashboard du projet reste la navigation principale.")
+        self.page_title.setStyleSheet(
+            "font-size: 20px; font-weight: 700; color: #0f172a;"
+        )
+        self.page_subtitle = QLabel(
+            "Le dashboard du projet reste la navigation principale."
+        )
         self.page_subtitle.setStyleSheet("color: #64748b; font-size: 14px;")
 
         title_box.addWidget(self.page_title)
@@ -172,7 +179,9 @@ class LauncherWindow(QMainWindow):
         title = QLabel("Settings / System Status")
         title.setStyleSheet("font-size: 20px; font-weight: 700; color: #0f172a;")
 
-        hint = QLabel("Cette page sert seulement au diagnostic. Le retour au projet se fait avec le bouton ci-dessous.")
+        hint = QLabel(
+            "Cette page sert seulement au diagnostic. Le retour au projet se fait avec le bouton ci-dessous."
+        )
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #64748b;")
 
@@ -180,7 +189,11 @@ class LauncherWindow(QMainWindow):
         self.port_state_label = QLabel("Ports: API 8000 / MQTT 1883")
         self.dependency_status_label = QLabel("Dépendances: en attente")
 
-        for label in [self.backend_state_label, self.port_state_label, self.dependency_status_label]:
+        for label in [
+            self.backend_state_label,
+            self.port_state_label,
+            self.dependency_status_label,
+        ]:
             label.setStyleSheet(
                 "background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; color: #334155;"
             )
@@ -244,13 +257,17 @@ class LauncherWindow(QMainWindow):
         if page == "settings":
             self.pages.setCurrentIndex(1)
             self.page_title.setText("Settings")
-            self.page_subtitle.setText("Diagnostic système, dépendances, ports et état backend")
+            self.page_subtitle.setText(
+                "Diagnostic système, dépendances, ports et état backend"
+            )
             self.alert_bar.hide()
             self.settings_btn.hide()
         else:
             self.pages.setCurrentIndex(0)
             self.page_title.setText("MQTT Control Launcher")
-            self.page_subtitle.setText("Le dashboard du projet reste la navigation principale.")
+            self.page_subtitle.setText(
+                "Le dashboard du projet reste la navigation principale."
+            )
             self.settings_btn.show()
             if self.alert_label.text():
                 self.alert_bar.show()
@@ -281,20 +298,34 @@ class LauncherWindow(QMainWindow):
             self._hide_alert()
         else:
             missing_count = len(report.missing_items)
-            self.dependency_status_label.setText(f"Dépendances: {missing_count} élément(s) manquant(s)")
+            self.dependency_status_label.setText(
+                f"Dépendances: {missing_count} élément(s) manquant(s)"
+            )
             self._show_alert(f"Alerte: {missing_count} dépendance(s) manquante(s).")
 
         self._update_runtime_status(report.ok)
 
     def launch_project(self) -> None:
         report = self.checker()
-        blocking_missing = [item for item in report.missing_items if item.category in {"Runtime", "Python modules"}]
+        blocking_missing = [
+            item
+            for item in report.missing_items
+            if item.category in {"Runtime", "Python modules"}
+        ]
         if blocking_missing:
-            self.log("Le backend ne peut pas démarrer: dépendances Python/runtime manquantes. Ouvre Settings pour voir le détail.")
+            self.log(
+                "Le backend ne peut pas démarrer: dépendances Python/runtime manquantes. Ouvre Settings pour voir le détail."
+            )
             self._update_runtime_status(report.ok)
             return
 
-        if self.backend_process is not None and self.backend_process.state() != QProcess.NotRunning:
+        self.log("Nettoyage des anciennes instances éventuelles...")
+        self._cleanup_old_backend()
+
+        if (
+            self.backend_process is not None
+            and self.backend_process.state() != QProcess.NotRunning
+        ):
             self.log("Backend déjà démarré.")
             self._update_runtime_status(self._is_backend_reachable())
             return
@@ -354,7 +385,11 @@ class LauncherWindow(QMainWindow):
         if not self.backend_process:
             return
 
-        text = bytes(self.backend_process.readAllStandardOutput()).decode("utf-8", errors="ignore").strip()
+        text = (
+            bytes(self.backend_process.readAllStandardOutput())
+            .decode("utf-8", errors="ignore")
+            .strip()
+        )
         if text:
             self.log(text)
             if "Application startup complete" in text or "Uvicorn running on" in text:
@@ -364,7 +399,11 @@ class LauncherWindow(QMainWindow):
         if not self.backend_process:
             return
 
-        text = bytes(self.backend_process.readAllStandardError()).decode("utf-8", errors="ignore").strip()
+        text = (
+            bytes(self.backend_process.readAllStandardError())
+            .decode("utf-8", errors="ignore")
+            .strip()
+        )
         if text:
             self.log(text)
 
@@ -373,16 +412,22 @@ class LauncherWindow(QMainWindow):
         api_open = self._is_port_open(8000)
         mqtt_open = self._is_port_open(1883)
 
-        self.backend_state_label.setText(f"Backend status: {'actif' if backend_ok else 'arrêté'}")
+        self.backend_state_label.setText(
+            f"Backend status: {'actif' if backend_ok else 'arrêté'}"
+        )
         self.port_state_label.setText(
             f"Ports: API 8000 {'ouvert' if api_open else 'fermé'} | MQTT 1883 {'ouvert' if mqtt_open else 'fermé'}"
         )
 
         if self.pages.currentIndex() == 0:
             if backend_ok:
-                self.page_subtitle.setText("Le dashboard du projet reste la navigation principale.")
+                self.page_subtitle.setText(
+                    "Le dashboard du projet reste la navigation principale."
+                )
             elif not dependencies_ok:
-                self.page_subtitle.setText("Des dépendances manquent. Le dashboard reste utilisable.")
+                self.page_subtitle.setText(
+                    "Des dépendances manquent. Le dashboard reste utilisable."
+                )
             else:
                 self.page_subtitle.setText("Backend en cours de démarrage")
 
@@ -401,19 +446,61 @@ class LauncherWindow(QMainWindow):
 
     def _is_backend_reachable(self) -> bool:
         try:
-            with urlopen("http://127.0.0.1:8000/health", timeout=0.6) as response:
-                return response.status == 200
-        except URLError:
-            return False
+            # We check /api/debug/backend which returns a unique identity string
+            # to avoid being fooled by another service on port 8000.
+            with urlopen(
+                "http://127.0.0.1:8000/api/debug/backend", timeout=1.0
+            ) as response:
+                if response.status != 200:
+                    return False
+                data = json.loads(response.read().decode("utf-8"))
+                return data.get("backend") == "mqtt-control-api"
         except Exception:
             return False
+
+    def _cleanup_old_backend(self) -> None:
+        """Find and kill any process listening on port 8000 if it's our backend."""
+        # Note: We only do this if it's actually our backend to avoid killing random apps.
+        if not self._is_backend_reachable():
+            return
+
+        self.log("Ancienne instance détectée sur le port 8000. Fermeture active...")
+        try:
+            # 1. Find the PID using netstat
+            output = (
+                subprocess.check_output(["netstat", "-ano"], text=True)
+                .strip()
+                .splitlines()
+            )
+            pid = None
+            for line in output:
+                if ":8000" in line and "LISTENING" in line:
+                    parts = line.split()
+                    if len(parts) >= 5:
+                        pid = parts[-1]
+                        break
+
+            if pid:
+                self.log(f"Killing process tree for PID {pid}...")
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", pid],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                # Give it a moment to release the port
+                time.sleep(0.5)
+        except Exception as e:
+            self.log(f"Erreur lors du nettoyage : {e}")
 
     def _get_runtime_status(self) -> dict[str, object]:
         if not self._is_backend_reachable():
             return {"managed_services": []}
 
         try:
-            with urlopen("http://127.0.0.1:8000/api/system/runtime-status", timeout=0.8) as response:
+            with urlopen(
+                "http://127.0.0.1:8000/api/system/runtime-status", timeout=0.8
+            ) as response:
                 payload = response.read().decode("utf-8")
             return json.loads(payload)
         except Exception:
@@ -439,7 +526,9 @@ class LauncherWindow(QMainWindow):
     def _build_shutdown_message(self) -> str:
         runtime_status = self._get_runtime_status()
         managed_services = runtime_status.get("managed_services", [])
-        running_services = [service for service in managed_services if service.get("running")]
+        running_services = [
+            service for service in managed_services if service.get("running")
+        ]
 
         if not running_services:
             return (
@@ -461,11 +550,19 @@ class LauncherWindow(QMainWindow):
             else:
                 lines.append(f"- {name}")
 
-        lines.extend(["", "Cliquez sur OK pour arrêter ces services, ou Annuler pour revenir à l'application."])
+        lines.extend(
+            [
+                "",
+                "Cliquez sur OK pour arrêter ces services, ou Annuler pour revenir à l'application.",
+            ]
+        )
         return "\n".join(lines)
 
     def _stop_backend(self, message: str | None = None) -> None:
-        if self.backend_process is None or self.backend_process.state() == QProcess.NotRunning:
+        if (
+            self.backend_process is None
+            or self.backend_process.state() == QProcess.NotRunning
+        ):
             return
 
         if message:
