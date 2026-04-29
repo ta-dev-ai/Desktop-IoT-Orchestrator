@@ -24,7 +24,10 @@ from PySide6.QtWidgets import (
 )
 
 try:
+    from PySide6.QtWebEngineCore import QWebEngineSettings
     from PySide6.QtWebEngineWidgets import QWebEngineView
+
+
 except Exception:  # pragma: no cover - fallback when WebEngine is unavailable
     QWebEngineView = None
 

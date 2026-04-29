@@ -419,6 +419,14 @@ def dashboard_publish_visual_fallback_script():
     )
 
 
+@app.get("/command-rescue.js")
+def dashboard_command_rescue_script():
+    return FileResponse(
+        DASHBOARD_DIR / "command-rescue.js",
+        media_type="application/javascript",
+    )
+
+
 def _resolve_dashboard_file(filename: str):
     mqtt_candidate = DASHBOARD_DIR / filename
     if mqtt_candidate.exists():
@@ -456,6 +464,33 @@ async def ensure_dashboard_routes(request, call_next):
         if asset_file:
             return FileResponse(asset_file, media_type=dashboard_asset_types[path])
         return JSONResponse({"detail": f"Asset introuvable: {path}"}, status_code=404)
+
+    # Generic fallback for dashboard static assets.
+    # This prevents future 404s when a new JS/CSS/image file is added to
+    # mqtt-dashboard but not yet explicitly wired in FastAPI routes.
+    if not path.startswith("/api/") and not path.startswith("/docs") and not path.startswith("/openapi"):
+        safe_name = path.lstrip("/")
+        if safe_name and ".." not in safe_name:
+            candidate = DASHBOARD_DIR / safe_name
+            if candidate.exists() and candidate.is_file():
+                suffix = candidate.suffix.lower()
+                media_types = {
+                    ".js": "application/javascript",
+                    ".css": "text/css",
+                    ".html": "text/html",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".svg": "image/svg+xml",
+                    ".ico": "image/x-icon",
+                    ".gif": "image/gif",
+                    ".webp": "image/webp",
+                    ".json": "application/json",
+                }
+                return FileResponse(
+                    candidate,
+                    media_type=media_types.get(suffix, "application/octet-stream"),
+                )
 
     return await call_next(request)
 
