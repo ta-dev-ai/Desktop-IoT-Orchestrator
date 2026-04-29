@@ -11,7 +11,9 @@ const API_ORIGIN =
 const API_BASE = `${API_ORIGIN}/api/commands`;
 const SYSTEM_STATUS_URL = `${API_ORIGIN}/api/system/status`;
 const HEALTH_URL = `${API_ORIGIN}/health`;
+const EVENTS_URL = `${API_ORIGIN}/api/debug/events`;
 const MESSAGE_HISTORY_KEY = 'mqtt-dashboard-message-history';
+let lastEventIndex = 0;
 const terminalLog = document.getElementById('terminal-log');
 const brokerStatus = document.getElementById('broker-status');
 const logoutBtn = document.getElementById('logout-btn');
@@ -228,8 +230,16 @@ function appendMessageItem(item, persist = true) {
 
 function setBrokerStatus(status) {
   if (!brokerStatus) return;
-
   brokerStatus.textContent = status;
+  brokerStatus.classList.remove('ok', 'warning', 'offline');
+
+  if (status === 'Connecté') {
+    brokerStatus.classList.add('ok');
+  } else if (status === 'Déconnecté') {
+    brokerStatus.classList.add('offline');
+  } else {
+    brokerStatus.classList.add('warning');
+  }
 }
 
 function setActiveMenu(viewName) {
@@ -328,10 +338,13 @@ async function loadProjectStats() {
     const response = await fetch(`${API_ORIGIN}/api/system/stats`);
     const data = await response.json();
     if (data.ok) {
-      brokerText.textContent = data.broker_running ? 'Connecté' : 'Arrêté';
-      receivedText.textContent = data.counts.received || 0;
-      sentText.textContent = data.counts.published || 0;
+      brokerText.textContent = data.broker_running ? 'Actif' : 'Arrêté';
+      receivedText.textContent = data.counts.responses || 0;
+      sentText.textContent = data.counts.commands || 0;
       clientsText.textContent = data.clients || 0;
+
+      // Mise à jour du badge global de statut
+      setBrokerStatus(data.broker_running ? 'Connecté' : 'Déconnecté');
 
       // Update sidebar as well
       const sidebarBrokerStatus = document.getElementById('broker-status');
@@ -584,6 +597,37 @@ function seedInitialLog() {
   addLogLine('Vérification du backend et des dépendances...');
 }
 
+async function syncBackgroundEvents() {
+  if (!backendAvailable) return;
+
+  try {
+    const response = await fetch(EVENTS_URL);
+    const payload = await response.json().catch(() => ({}));
+
+    if (response.ok && Array.isArray(payload.items)) {
+      const newItems = payload.items.slice(lastEventIndex);
+      newItems.forEach((item) => {
+        // On affiche le log dans le terminal
+        addLogLine(item.message, item.type.toUpperCase());
+
+        // Si le message provient du Subscriber, on l'ajoute à la liste des messages reçus
+        if (item.type === 'response' && item.message.includes('[Sub]')) {
+          const content = item.message.replace('[Sub]', '').trim();
+          appendMessageItem({
+            type: 'incoming',
+            topic: 'MQTT (Sub)',
+            message: content,
+            time: getTimestamp(),
+          });
+        }
+      });
+      lastEventIndex = payload.items.length;
+    }
+  } catch (error) {
+    console.error('Erreur de synchronisation des logs:', error);
+  }
+}
+
 async function bootstrapDashboard() {
   await pingBackend();
   if (!backendAvailable) {
@@ -596,8 +640,12 @@ async function bootstrapDashboard() {
   await loadSystemStatus();
   await loadProjectStats();
 
-  // Refresh stats periodically
+  // Initial sync to grab current logs
+  await syncBackgroundEvents();
+
+  // Refresh stats and background logs periodically
   window.setInterval(loadProjectStats, 5000);
+  window.setInterval(syncBackgroundEvents, 3000);
 }
 
 // Initialisation de l'interface.

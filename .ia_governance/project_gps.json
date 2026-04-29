@@ -12,19 +12,19 @@
   "key_flows": [
     {
       "name": "launcher_boot",
-      "description": "Le launcher vérifie l'environnement, démarre FastAPI et ouvre le dashboard embarqué."
+      "description": "Le launcher vérifie l'environnement, nettoie les anciennes instances sur le port 8000, démarre FastAPI et vérifie son identité projet."
     },
     {
       "name": "dashboard_to_backend",
-      "description": "Le dashboard vanilla HTML/CSS/JS appelle FastAPI avec fetch pour exécuter les commandes MQTT."
+      "description": "Le dashboard appelle FastAPI via fetch pour les commandes, les stats en temps réel et la gestion des appareils."
     },
     {
-      "name": "mqtt_publish_flow",
-      "description": "Le dashboard demande une publication, FastAPI lance mosquitto_pub, Mosquitto distribue le message aux abonnés."
+      "name": "mqtt_stats_flow",
+      "description": "Le dashboard récupère périodiquement les statistiques réelles (messages, clients) via l'endpoint /api/system/stats."
     },
     {
       "name": "devices_module",
-      "description": "Le module appareils MQTT enregistre des appareils externes, prépare leur configuration et expose une vue de statut configuré."
+      "description": "Vue intégrée dans la navigation principale permettant de gérer le registre des appareils MQTT."
     }
   ],
   "tree": [
@@ -90,7 +90,7 @@
         {
           "path": "launcher/ui.py",
           "type": "file",
-          "role": "Fenêtre principale desktop, boot automatique, settings et fermeture contrôlée."
+          "role": "Fenêtre principale desktop, nettoyage des instances orphelines, boot avec vérification d'identité, et gestion du dashboard."
         },
         {
           "path": "launcher/checker.py",
@@ -142,7 +142,7 @@
         {
           "path": "mqtt-dashboard/api-debug.js",
           "type": "file",
-          "role": "Logique de test des endpoints API depuis la page api-debug.html."
+          "role": "Logique de test des endpoints API avec vérification d'identité du backend et gestion d'URL dynamique."
         }
       ]
     },
@@ -263,9 +263,34 @@
       "role": "Licence du projet."
     }
   ],
+  "golden_rules": [
+    "VÉRIFICATION D'IDENTITÉ : Ne jamais se fier uniquement au port 8000. Toujours valider via /api/debug/backend avant d'interagir.",
+    "NETTOYAGE ACTIF : Tout démarrage du launcher doit d'abord purger les processus 'zombies' ou les ports occupés par le projet.",
+    "AUCUNE DONNÉE FICTIVE : Toute information affichée (stats, logs, messages) doit provenir d'un appel API réel et non de valeurs HTML en dur.",
+    "ORIGINE DYNAMIQUE : Le frontend ne doit jamais coder l'adresse du backend (127.0.0.1:8000) en dur. Utiliser window.location.origin.",
+    "SÉCURITÉ DES PIPES : Ne jamais démarrer de processus système (Popen) avec redirection de flux (PIPE) sans un thread pour vider le buffer."
+  ],
+  "future_planning": [
+    {
+      "phase": "Phase 1: Sincérité Technique",
+      "tasks": [
+        "Implémenter le thread de lecture pour mosquitto_sub",
+        "Supprimer les scripts de fallback et de rescue",
+        "Connecter la liste des messages reçus au flux réel"
+      ]
+    },
+    {
+      "phase": "Phase 2: Rigueur Système",
+      "tasks": [
+        "Portabilité Linux/macOS du nettoyage de ports",
+        "Gestion robuste des erreurs de bind MQTT",
+        "Logs persistants côté backend"
+      ]
+    }
+  ],
   "known_limits": [
-    "Le module appareils MQTT est en MVP: il gère l'enregistrement, la configuration et le statut configuré, mais pas encore l'ACK réel d'un appareil distant.",
-    "Le dashboard mélange encore UI de démonstration et logique réelle sur certaines zones de logs/messages.",
-    "Le launcher et le dashboard ont connu plusieurs itérations; vérifier le GPS après toute refonte majeure."
+    "Le module appareils MQTT gère le registre et la configuration, mais la surveillance en temps réel de l'état réseau des appareils reste basique.",
+    "L'affichage des messages 'Reçus' dépend du polling des stats backend; une remontée temps réel via WebSocket n'est pas encore implémentée.",
+    "Le nettoyage automatique des ports repose sur l'identification du PID via netstat (Windows uniquement)."
   ]
 }

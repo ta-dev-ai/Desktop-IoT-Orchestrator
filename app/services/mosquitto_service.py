@@ -6,11 +6,23 @@ import socket
 import os
 import subprocess
 
+import threading
 from app.core import processes
 from app.core.paths import ROOT_DIR
 from app.models.payloads import PublishMessagePayload
 from app.services import debug_service
 from app.services.dependency_service import resolve_command
+
+
+def _consume_stream(process: subprocess.Popen, name: str) -> None:
+    """Consume the stdout of a process and forward it to debug_service."""
+    if not process.stdout:
+        return
+    for line in iter(process.stdout.readline, ""):
+        line = line.strip()
+        if line:
+            debug_service.add_event("response", f"[{name}] {line}")
+    process.stdout.close()
 
 
 def _missing_response(tool: str) -> dict:
@@ -37,7 +49,11 @@ def start_broker() -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        bufsize=1,
     )
+    threading.Thread(
+        target=_consume_stream, args=(processes.broker_process, "Broker"), daemon=True
+    ).start()
     return {
         "ok": True,
         "message": "Broker MQTT démarré.",
@@ -51,7 +67,9 @@ def stop_broker() -> dict:
     processes.broker_process = None
     return {
         "ok": True,
-        "message": "Broker MQTT arrêté." if stopped else "Aucun broker suivi à arrêter.",
+        "message": (
+            "Broker MQTT arrêté." if stopped else "Aucun broker suivi à arrêter."
+        ),
     }
 
 
@@ -71,7 +89,11 @@ def start_subscriber(topic: str = "temperature") -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        bufsize=1,
     )
+    threading.Thread(
+        target=_consume_stream, args=(processes.subscriber_process, "Sub"), daemon=True
+    ).start()
     return {
         "ok": True,
         "message": f"Subscriber démarré sur le topic {topic}.",
@@ -85,7 +107,9 @@ def stop_subscriber() -> dict:
     processes.subscriber_process = None
     return {
         "ok": True,
-        "message": "Subscriber arrêté." if stopped else "Aucun subscriber suivi à arrêter.",
+        "message": (
+            "Subscriber arrêté." if stopped else "Aucun subscriber suivi à arrêter."
+        ),
     }
 
 
@@ -117,7 +141,9 @@ def publish_message(payload: PublishMessagePayload) -> dict:
         )
         return {
             "ok": False,
-            "message": completed.stderr.strip() or completed.stdout.strip() or "Publication échouée.",
+            "message": completed.stderr.strip()
+            or completed.stdout.strip()
+            or "Publication échouée.",
         }
 
     return {
@@ -157,8 +183,14 @@ def open_terminal() -> dict:
 
 def runtime_status() -> dict:
     services = [
-        {"name": "MQTT broker", "running": processes.is_process_running(processes.broker_process)},
-        {"name": "MQTT subscriber", "running": processes.is_process_running(processes.subscriber_process)},
+        {
+            "name": "MQTT broker",
+            "running": processes.is_process_running(processes.broker_process),
+        },
+        {
+            "name": "MQTT subscriber",
+            "running": processes.is_process_running(processes.subscriber_process),
+        },
     ]
     return {"ok": True, "services": services}
 

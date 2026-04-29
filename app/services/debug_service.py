@@ -30,13 +30,9 @@ def clear_events() -> None:
 
 
 def get_event_counts() -> dict:
-    publish_count = sum(
-        1
-        for e in _events
-        if e["kind"] == "command" and "publish" in e["message"].lower()
-    )
+    command_count = sum(1 for e in _events if e["kind"] == "command")
     response_count = sum(1 for e in _events if e["kind"] == "response")
     return {
-        "published": publish_count,
-        "received": response_count,  # Simplified proxy for received/responses
+        "commands": command_count,
+        "responses": response_count,
     }
