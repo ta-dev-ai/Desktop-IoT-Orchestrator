@@ -440,12 +440,12 @@
     }
   }
 
-  function serializeFormToQuery(form) {
-    const params = new URLSearchParams();
+  function serializeFormToPayload(form) {
+    const payload = {};
     new FormData(form).forEach((value, key) => {
-      params.set(key, String(value));
+      payload[key] = String(value);
     });
-    return params.toString();
+    return payload;
   }
 
   function wireForm() {
@@ -460,9 +460,11 @@
       feedback.textContent = "Ajout de l'appareil en cours...";
 
       try {
-        const query = serializeFormToQuery(form);
-        const response = await fetch(DEVICE_LIST_URL + "?" + query, {
+        const payload = serializeFormToPayload(form);
+        const response = await fetch(DEVICE_LIST_URL, {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
         const result = await response.json();
 

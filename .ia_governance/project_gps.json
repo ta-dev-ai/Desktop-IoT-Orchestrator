@@ -58,7 +58,27 @@
         {
           "path": "app/main.py",
           "type": "file",
-          "role": "Entrée principale FastAPI. Sert le dashboard, les routes API, le check système, les commandes MQTT et le module appareils."
+          "role": "Entrée principale FastAPI minimale. Crée l'app, active CORS et branche les routers."
+        },
+        {
+          "path": "app/core",
+          "type": "directory",
+          "role": "Chemins partagés et registre des processus runtime."
+        },
+        {
+          "path": "app/models",
+          "type": "directory",
+          "role": "Modèles Pydantic pour payloads API et appareils MQTT."
+        },
+        {
+          "path": "app/services",
+          "type": "directory",
+          "role": "Logique métier: Mosquitto, dépendances et registre appareils."
+        },
+        {
+          "path": "app/routes",
+          "type": "directory",
+          "role": "Routes FastAPI séparées: commandes, système, appareils et frontend."
         }
       ]
     },
