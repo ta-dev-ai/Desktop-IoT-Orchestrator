@@ -4,16 +4,17 @@
 // sans casser le dashboard existant.
 
 (function () {
-  const API_ROOT = "http://127.0.0.1:8000";
-  const DEVICE_LIST_URL = API_ROOT + "/api/devices";
+  const API_ROOT =
+    window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' : window.location.origin;
+  const DEVICE_LIST_URL = API_ROOT + '/api/devices';
 
   function createStyles() {
-    if (document.getElementById("devices-module-styles")) {
+    if (document.getElementById('devices-module-styles')) {
       return;
     }
 
-    const style = document.createElement("style");
-    style.id = "devices-module-styles";
+    const style = document.createElement('style');
+    style.id = 'devices-module-styles';
     style.textContent = `
       .devices-section {
         margin-top: 24px;
@@ -188,61 +189,18 @@
 
   function getDashboardAnchor() {
     return (
-      document.querySelector(".messages-section") ||
-      document.querySelector(".dashboard-main") ||
-      document.querySelector("main") ||
+      document.querySelector('.messages-section') ||
+      document.querySelector('.dashboard-main') ||
+      document.querySelector('main') ||
       document.body
     );
   }
 
-  function ensureSidebarLink() {
-    const existing = document.getElementById("sidebar-devices-link");
-    if (existing) {
-      return;
-    }
-
-    const sidebarMenu =
-      document.querySelector(".sidebar nav") ||
-      document.querySelector(".sidebar-menu") ||
-      document.querySelector(".sidebar");
-
-    if (!sidebarMenu) {
-      return;
-    }
-
-    const link = document.createElement("button");
-    link.type = "button";
-    link.id = "sidebar-devices-link";
-    link.className = "sidebar-device-link";
-    link.textContent = "Appareils";
-    link.style.border = "none";
-    link.style.background = "transparent";
-    link.style.textAlign = "left";
-    link.style.width = "100%";
-    link.style.font = "inherit";
-    link.style.color = "inherit";
-    link.style.padding = "14px 18px";
-    link.style.borderRadius = "14px";
-
-    link.addEventListener("click", function () {
-      const section = document.getElementById("devices-section");
-      if (section) {
-        section.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
-
-    sidebarMenu.appendChild(link);
-  }
-
   function buildSection() {
-    if (document.getElementById("devices-section")) {
-      return document.getElementById("devices-section");
-    }
+    const container = document.getElementById('devices-container');
+    if (!container) return;
 
-    const section = document.createElement("section");
-    section.id = "devices-section";
-    section.className = "devices-section";
-    section.innerHTML = `
+    container.innerHTML = `
       <div class="devices-section-header">
         <div class="devices-section-title">
           <h3>Appareils MQTT</h3>
@@ -303,9 +261,7 @@
         </div>
       </div>
     `;
-
-    getDashboardAnchor().appendChild(section);
-    return section;
+    return container;
   }
 
   function formatConfigBlock(config) {
@@ -313,45 +269,49 @@
       `Broker : ${config.broker_host}`,
       `Port : ${config.broker_port}`,
       `Topic principal : ${config.primary_topic}`,
-      "",
-      "Exemple subscribe :",
+      '',
+      'Exemple subscribe :',
       config.subscribe_example,
-      "",
-      "Exemple publish :",
+      '',
+      'Exemple publish :',
       config.publish_example,
-    ].join("\n");
+    ].join('\n');
   }
 
   async function loadDeviceConfig(deviceId) {
-    const response = await fetch(API_ROOT + "/api/devices/" + encodeURIComponent(deviceId) + "/mqtt-config");
+    const response = await fetch(
+      API_ROOT + '/api/devices/' + encodeURIComponent(deviceId) + '/mqtt-config',
+    );
     return response.json();
   }
 
   async function loadDeviceStatus(deviceId) {
-    const response = await fetch(API_ROOT + "/api/devices/" + encodeURIComponent(deviceId) + "/status");
+    const response = await fetch(
+      API_ROOT + '/api/devices/' + encodeURIComponent(deviceId) + '/status',
+    );
     return response.json();
   }
 
   async function deleteDevice(deviceId) {
-    await fetch(API_ROOT + "/api/devices/" + encodeURIComponent(deviceId), {
-      method: "DELETE",
+    await fetch(API_ROOT + '/api/devices/' + encodeURIComponent(deviceId), {
+      method: 'DELETE',
     });
   }
 
   function renderDevice(device, listElement) {
-    const item = document.createElement("article");
-    item.className = "device-item";
+    const item = document.createElement('article');
+    item.className = 'device-item';
     item.innerHTML = `
       <div class="device-item-header">
         <div class="device-item-title">
-          <strong>${escapeHtml(device.name || "Appareil MQTT")}</strong>
-          <span class="device-meta">${escapeHtml(device.type || "generic")} • ${escapeHtml(device.host || "host non renseigné")}</span>
+          <strong>${escapeHtml(device.name || 'Appareil MQTT')}</strong>
+          <span class="device-meta">${escapeHtml(device.type || 'generic')} • ${escapeHtml(device.host || 'host non renseigné')}</span>
         </div>
-        <span class="device-badge">${escapeHtml(device.role || "subscriber")}</span>
+        <span class="device-badge">${escapeHtml(device.role || 'subscriber')}</span>
       </div>
       <div class="device-badges">
-        ${(device.topics_sub || []).map((topic) => `<span class="device-badge">écoute: ${escapeHtml(topic)}</span>`).join("")}
-        ${(device.topics_pub || []).map((topic) => `<span class="device-badge">publie: ${escapeHtml(topic)}</span>`).join("")}
+        ${(device.topics_sub || []).map((topic) => `<span class="device-badge">écoute: ${escapeHtml(topic)}</span>`).join('')}
+        ${(device.topics_pub || []).map((topic) => `<span class="device-badge">publie: ${escapeHtml(topic)}</span>`).join('')}
       </div>
       <div class="device-item-actions">
         <button type="button" data-action="config">Voir configuration</button>
@@ -361,14 +321,14 @@
       <div class="device-config" hidden></div>
     `;
 
-    const configPanel = item.querySelector(".device-config");
+    const configPanel = item.querySelector('.device-config');
 
-    item.querySelector('[data-action="config"]').addEventListener("click", async function () {
+    item.querySelector('[data-action="config"]').addEventListener('click', async function () {
       configPanel.hidden = false;
-      configPanel.innerHTML = "<strong>Chargement de la configuration MQTT...</strong>";
+      configPanel.innerHTML = '<strong>Chargement de la configuration MQTT...</strong>';
       const result = await loadDeviceConfig(device.id);
       if (!result.ok) {
-        configPanel.innerHTML = "<strong>Configuration introuvable.</strong>";
+        configPanel.innerHTML = '<strong>Configuration introuvable.</strong>';
         return;
       }
       configPanel.innerHTML = `
@@ -377,27 +337,29 @@
       `;
     });
 
-    item.querySelector('[data-action="status"]').addEventListener("click", async function () {
+    item.querySelector('[data-action="status"]').addEventListener('click', async function () {
       configPanel.hidden = false;
-      configPanel.innerHTML = "<strong>Vérification du statut...</strong>";
+      configPanel.innerHTML = '<strong>Vérification du statut...</strong>';
       const result = await loadDeviceStatus(device.id);
       if (!result.ok) {
-        configPanel.innerHTML = "<strong>Statut introuvable.</strong>";
+        configPanel.innerHTML = '<strong>Statut introuvable.</strong>';
         return;
       }
       configPanel.innerHTML = `
         <strong>État appareil</strong>
-        <pre>${escapeHtml([
-          `State : ${result.status.state}`,
-          `Broker : ${result.status.mqtt_host}`,
-          `Port : ${result.status.mqtt_port}`,
-          `Broker ready : ${result.status.broker_ready ? "oui" : "non"}`,
-          `Dernière trace : ${result.status.last_seen || "n/a"}`
-        ].join("\n"))}</pre>
+        <pre>${escapeHtml(
+          [
+            `State : ${result.status.state}`,
+            `Broker : ${result.status.mqtt_host}`,
+            `Port : ${result.status.mqtt_port}`,
+            `Broker ready : ${result.status.broker_ready ? 'oui' : 'non'}`,
+            `Dernière trace : ${result.status.last_seen || 'n/a'}`,
+          ].join('\n'),
+        )}</pre>
       `;
     });
 
-    item.querySelector('[data-action="delete"]').addEventListener("click", async function () {
+    item.querySelector('[data-action="delete"]').addEventListener('click', async function () {
       if (!window.confirm(`Supprimer l'appareil "${device.name}" ?`)) {
         return;
       }
@@ -410,14 +372,14 @@
 
   function escapeHtml(value) {
     return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   async function refreshDevices() {
-    const listElement = document.getElementById("device-list");
+    const listElement = document.getElementById('device-list');
     if (!listElement) {
       return;
     }
@@ -427,16 +389,18 @@
     try {
       const response = await fetch(DEVICE_LIST_URL);
       const result = await response.json();
-      listElement.innerHTML = "";
+      listElement.innerHTML = '';
 
       if (!result.ok || !Array.isArray(result.items) || result.items.length === 0) {
-        listElement.innerHTML = '<div class="device-empty">Aucun appareil enregistré pour le moment.</div>';
+        listElement.innerHTML =
+          '<div class="device-empty">Aucun appareil enregistré pour le moment.</div>';
         return;
       }
 
       result.items.forEach((device) => renderDevice(device, listElement));
     } catch (error) {
-      listElement.innerHTML = '<div class="device-empty">Impossible de charger les appareils.</div>';
+      listElement.innerHTML =
+        '<div class="device-empty">Impossible de charger les appareils.</div>';
     }
   }
 
@@ -449,21 +413,21 @@
   }
 
   function wireForm() {
-    const form = document.getElementById("device-form");
-    const feedback = document.getElementById("devices-feedback");
+    const form = document.getElementById('device-form');
+    const feedback = document.getElementById('devices-feedback');
     if (!form || !feedback) {
       return;
     }
 
-    form.addEventListener("submit", async function (event) {
+    form.addEventListener('submit', async function (event) {
       event.preventDefault();
       feedback.textContent = "Ajout de l'appareil en cours...";
 
       try {
         const payload = serializeFormToPayload(form);
         const response = await fetch(DEVICE_LIST_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const result = await response.json();
@@ -473,7 +437,7 @@
           return;
         }
 
-        feedback.textContent = "Appareil ajouté avec succès.";
+        feedback.textContent = 'Appareil ajouté avec succès.';
         form.reset();
         await refreshDevices();
       } catch (error) {
@@ -484,14 +448,13 @@
 
   function initDevicesModule() {
     createStyles();
-    ensureSidebarLink();
     buildSection();
     wireForm();
     refreshDevices();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initDevicesModule);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDevicesModule);
   } else {
     initDevicesModule();
   }

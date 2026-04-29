@@ -1,287 +1,360 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MQTT Control</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <div class="app-shell">
-    <!-- Sidebar gauche -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">◎</div>
-        <div>
-          <h1>MQTT Control</h1>
-          <p>Mini Dashboard</p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MQTT Control</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <!-- Sidebar gauche -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">◎</div>
+          <div>
+            <h1>MQTT Control</h1>
+            <p>Mini Dashboard</p>
+          </div>
         </div>
-      </div>
 
-      <nav class="menu" aria-label="Navigation principale">
-        <a class="menu-item active" href="#dashboard" data-view="dashboard">Dashboard</a>
-        <a class="menu-item" href="#commandes" data-view="commandes">Commandes</a>
-        <a class="menu-item" href="#logs" data-view="logs">Logs</a>
-        <a class="menu-item" href="#settings" data-view="settings">Settings</a>
-      </nav>
+        <nav class="menu" aria-label="Navigation principale">
+          <a class="menu-item active" href="#dashboard" data-view="dashboard">Dashboard</a>
+          <a class="menu-item" href="#commandes" data-view="commandes">Commandes</a>
+          <a class="menu-item" href="#appareils" data-view="appareils" id="nav-appareils"
+            >Appareils</a
+          >
+          <a class="menu-item" href="#logs" data-view="logs">Logs</a>
+          <a class="menu-item" href="#settings" data-view="settings">Settings</a>
+        </nav>
 
-      <section class="status-card">
-        <div class="status-head">
-          <span class="status-label">Statut Broker</span>
-          <span class="status-dot online"></span>
-        </div>
-        <strong id="broker-status">Connecté</strong>
-        <span class="status-subtitle">localhost:1883</span>
-      </section>
-
-      <section class="profile-card">
-        <div>
-          <strong>Admin</strong>
-          <p>admin@example.com</p>
-        </div>
-        <button class="icon-button" type="button" aria-label="Ouvrir le menu profil">⌄</button>
-      </section>
-    </aside>
-
-    <!-- Contenu principal -->
-    <main class="main-content" id="dashboard">
-      <header class="topbar">
-        <div>
-          <h2 id="page-title">Dashboard</h2>
-          <p id="page-subtitle">Contrôlez votre serveur MQTT facilement</p>
-        </div>
-        <div class="topbar-actions">
-          <button class="ghost-button ghost-button-secondary" type="button" id="theme-toggle" aria-label="Activer le mode nuit bleu">
-            <span class="button-icon" aria-hidden="true">◐</span>
-            <span>Mode nuit</span>
-          </button>
-          <button class="ghost-button" type="button" id="logout-btn">Déconnexion</button>
-        </div>
-      </header>
-
-      <section class="view-panel is-active" data-view-panel="dashboard">
-        <!-- Statistiques -->
-        <section class="stats-grid" aria-label="Statistiques principales">
-          <article class="stat-card stat-success">
-            <div class="stat-card-row">
-              <span class="stat-icon" aria-hidden="true">●</span>
-              <span class="stat-label">Statut Broker</span>
-            </div>
-            <div class="stat-card-row stat-card-main">
-              <strong>Connecté</strong>
-              <small>localhost:1883</small>
-            </div>
-          </article>
-          <article class="stat-card stat-blue">
-            <div class="stat-card-row">
-              <span class="stat-icon" aria-hidden="true">↓</span>
-              <span class="stat-label">Messages reçus</span>
-            </div>
-            <div class="stat-card-row stat-card-main">
-              <strong>128</strong>
-              <small>Aujourd'hui</small>
-            </div>
-          </article>
-          <article class="stat-card stat-orange">
-            <div class="stat-card-row">
-              <span class="stat-icon" aria-hidden="true">↑</span>
-              <span class="stat-label">Messages envoyés</span>
-            </div>
-            <div class="stat-card-row stat-card-main">
-              <strong>64</strong>
-              <small>Aujourd'hui</small>
-            </div>
-          </article>
-          <article class="stat-card stat-purple">
-            <div class="stat-card-row">
-              <span class="stat-icon" aria-hidden="true">◎</span>
-              <span class="stat-label">Clients connectés</span>
-            </div>
-            <div class="stat-card-row stat-card-main">
-              <strong>3</strong>
-              <small>En ligne maintenant</small>
-            </div>
-          </article>
+        <section class="status-card">
+          <div class="status-head">
+            <span class="status-label">Statut Broker</span>
+            <span class="status-dot online"></span>
+          </div>
+          <strong id="broker-status">Connecté</strong>
+          <span class="status-subtitle">localhost:1883</span>
         </section>
 
-        <section class="content-grid">
-          <!-- Actions rapides -->
-          <section class="panel" id="commandes">
-            <div class="panel-header">
-              <h3>Actions rapides</h3>
-              <p>Chaque bouton appelle FastAPI via Fetch API.</p>
-            </div>
-
-            <div class="quick-actions">
-              <button type="button" class="action-button action-green" data-command="start-broker">Démarrer Broker</button>
-              <button type="button" class="action-button action-red" data-command="stop-broker">Arrêter Broker</button>
-              <button type="button" class="action-button action-blue" data-command="start-subscriber">Démarrer Subscriber</button>
-              <button type="button" class="action-button action-purple" id="open-publish-modal-btn">Envoyer Message</button>
-              <button type="button" class="action-button action-orange" data-command="restart-broker">Redémarrer Broker</button>
-              <button type="button" class="action-button action-slate" data-command="open-terminal">Ouvrir Terminal</button>
-            </div>
-          </section>
-
-          <!-- Tableau des commandes -->
-          <section class="panel table-panel">
-            <div class="panel-header">
-              <h3>Commandes disponibles</h3>
-              <p>Repère simple pour débuter et modifier le backend plus tard.</p>
-            </div>
-
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Commande</th>
-                    <th>Description</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>1</td>
-                    <td><code>mosquitto -v</code></td>
-                    <td>Démarrer le broker MQTT</td>
-                    <td><button type="button" class="table-action" data-command="start-broker">Exécuter</button></td>
-                  </tr>
-                  <tr>
-                    <td>2</td>
-                    <td><code>mosquitto_sub -h localhost -t temperature</code></td>
-                    <td>S'abonner au topic temperature</td>
-                    <td><button type="button" class="table-action" data-command="start-subscriber">Exécuter</button></td>
-                  </tr>
-                  <tr>
-                    <td>3</td>
-                    <td><code>mosquitto_pub -h localhost -t temperature -m "25°C"</code></td>
-                    <td>Publier température 25°C</td>
-                    <td><button type="button" class="table-action" data-command="publish-temperature">Exécuter</button></td>
-                  </tr>
-                  <tr>
-                    <td>4</td>
-                    <td><code>netstat -an | findstr :1883</code></td>
-                    <td>Vérifier le port 1883</td>
-                    <td><button type="button" class="table-action" data-command="verify-mqtt-port">Exécuter</button></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+        <section class="profile-card">
+          <div>
+            <strong>Admin</strong>
+            <p>admin@example.com</p>
+          </div>
+          <button class="icon-button" type="button" aria-label="Ouvrir le menu profil">⌄</button>
         </section>
+      </aside>
 
-        <section class="bottom-grid">
-          <!-- Logs -->
-          <section class="panel" id="logs">
-            <div class="panel-header panel-header-inline">
-              <div>
-                <h3>Logs en direct</h3>
-                <p>Les lignes s’ajoutent immédiatement, puis on affiche la réponse FastAPI.</p>
+      <!-- Contenu principal -->
+      <main class="main-content" id="dashboard">
+        <header class="topbar">
+          <div>
+            <h2 id="page-title">Dashboard</h2>
+            <p id="page-subtitle">Contrôlez votre serveur MQTT facilement</p>
+          </div>
+          <div class="topbar-actions">
+            <button
+              class="ghost-button ghost-button-secondary"
+              type="button"
+              id="theme-toggle"
+              aria-label="Activer le mode nuit bleu"
+            >
+              <span class="button-icon" aria-hidden="true">◐</span>
+              <span>Mode nuit</span>
+            </button>
+            <button class="ghost-button" type="button" id="logout-btn">Déconnexion</button>
+          </div>
+        </header>
+
+        <section class="view-panel is-active" data-view-panel="dashboard">
+          <!-- Statistiques -->
+          <section class="stats-grid" aria-label="Statistiques principales">
+            <article class="stat-card stat-success">
+              <div class="stat-card-row">
+                <span class="stat-icon" aria-hidden="true">●</span>
+                <span class="stat-label">Statut Broker</span>
               </div>
-              <span class="live-badge">En temps réel</span>
-            </div>
-
-            <pre id="terminal-log" class="terminal-log" aria-live="polite">[INFO] Broker démarré
-[SUB] Abonnement au topic temperature
-[PUB] Message envoyé : 25°C
-[INFO] Client connecté</pre>
+              <div class="stat-card-row stat-card-main">
+                <strong id="stat-broker-text">Connecté</strong>
+                <small>localhost:1883</small>
+              </div>
+            </article>
+            <article class="stat-card stat-blue">
+              <div class="stat-card-row">
+                <span class="stat-icon" aria-hidden="true">↓</span>
+                <span class="stat-label">Messages reçus</span>
+              </div>
+              <div class="stat-card-row stat-card-main">
+                <strong id="stat-received-count">0</strong>
+                <small>Aujourd'hui</small>
+              </div>
+            </article>
+            <article class="stat-card stat-orange">
+              <div class="stat-card-row">
+                <span class="stat-icon" aria-hidden="true">↑</span>
+                <span class="stat-label">Messages envoyés</span>
+              </div>
+              <div class="stat-card-row stat-card-main">
+                <strong id="stat-sent-count">0</strong>
+                <small>Aujourd'hui</small>
+              </div>
+            </article>
+            <article class="stat-card stat-purple">
+              <div class="stat-card-row">
+                <span class="stat-icon" aria-hidden="true">◎</span>
+                <span class="stat-label">Clients connectés</span>
+              </div>
+              <div class="stat-card-row stat-card-main">
+                <strong id="stat-clients-count">0</strong>
+                <small>En ligne maintenant</small>
+              </div>
+            </article>
           </section>
 
-          <!-- Messages topic -->
-          <section class="panel">
-            <div class="panel-header panel-header-inline">
-              <div>
-                <h3>Messages topic temperature</h3>
-                <p>Liste simple de messages reçus et envoyés.</p>
+          <section class="content-grid">
+            <!-- Actions rapides -->
+            <section class="panel" id="commandes">
+              <div class="panel-header">
+                <h3>Actions rapides</h3>
+                <p>Chaque bouton appelle FastAPI via Fetch API.</p>
               </div>
-              <span class="live-badge">En temps réel</span>
-            </div>
 
-            <ul class="message-list" id="message-list">
-              <li class="message-item" data-message-type="incoming">
-                <span class="message-dot incoming"></span>
-                <span class="message-main">25°C</span>
-                <span class="message-meta">temperature · Reçu</span>
-              </li>
-              <li class="message-item" data-message-type="outgoing">
-                <span class="message-dot outgoing"></span>
-                <span class="message-main">25°C</span>
-                <span class="message-meta">temperature · Envoyé</span>
-              </li>
-              <li class="message-item" data-message-type="incoming">
-                <span class="message-dot incoming"></span>
-                <span class="message-main">24°C</span>
-                <span class="message-meta">temperature · Reçu</span>
-              </li>
-            </ul>
+              <div class="quick-actions">
+                <button
+                  type="button"
+                  class="action-button action-green"
+                  data-command="start-broker"
+                >
+                  Démarrer Broker
+                </button>
+                <button type="button" class="action-button action-red" data-command="stop-broker">
+                  Arrêter Broker
+                </button>
+                <button
+                  type="button"
+                  class="action-button action-blue"
+                  data-command="start-subscriber"
+                >
+                  Démarrer Subscriber
+                </button>
+                <button
+                  type="button"
+                  class="action-button action-purple"
+                  id="open-publish-modal-btn"
+                >
+                  Envoyer Message
+                </button>
+                <button
+                  type="button"
+                  class="action-button action-orange"
+                  data-command="restart-broker"
+                >
+                  Redémarrer Broker
+                </button>
+                <button
+                  type="button"
+                  class="action-button action-slate"
+                  data-command="open-terminal"
+                >
+                  Ouvrir Terminal
+                </button>
+              </div>
+            </section>
+
+            <!-- Tableau des commandes -->
+            <section class="panel table-panel">
+              <div class="panel-header">
+                <h3>Commandes disponibles</h3>
+                <p>Repère simple pour débuter et modifier le backend plus tard.</p>
+              </div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Commande</th>
+                      <th>Description</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>1</td>
+                      <td><code>mosquitto -v</code></td>
+                      <td>Démarrer le broker MQTT</td>
+                      <td>
+                        <button type="button" class="table-action" data-command="start-broker">
+                          Exécuter
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>2</td>
+                      <td><code>mosquitto_sub -h localhost -t temperature</code></td>
+                      <td>S'abonner au topic temperature</td>
+                      <td>
+                        <button type="button" class="table-action" data-command="start-subscriber">
+                          Exécuter
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>3</td>
+                      <td><code>mosquitto_pub -h localhost -t temperature -m "25°C"</code></td>
+                      <td>Publier température 25°C</td>
+                      <td>
+                        <button
+                          type="button"
+                          class="table-action"
+                          data-command="publish-temperature"
+                        >
+                          Exécuter
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>4</td>
+                      <td><code>netstat -an | findstr :1883</code></td>
+                      <td>Vérifier le port 1883</td>
+                      <td>
+                        <button type="button" class="table-action" data-command="verify-mqtt-port">
+                          Exécuter
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <section class="bottom-grid">
+            <!-- Logs -->
+            <section class="panel" id="logs">
+              <div class="panel-header panel-header-inline">
+                <div>
+                  <h3>Logs en direct</h3>
+                  <p>Les lignes s’ajoutent immédiatement, puis on affiche la réponse FastAPI.</p>
+                </div>
+                <span class="live-badge">En temps réel</span>
+              </div>
+
+              <pre id="terminal-log" class="terminal-log" aria-live="polite"></pre>
+            </section>
+
+            <!-- Messages topic -->
+            <section class="panel">
+              <div class="panel-header panel-header-inline">
+                <div>
+                  <h3>Messages topic temperature</h3>
+                  <p>Liste simple de messages reçus et envoyés.</p>
+                </div>
+                <span class="live-badge">En temps réel</span>
+              </div>
+
+              <ul class="message-list" id="message-list"></ul>
+            </section>
           </section>
         </section>
-      </section>
 
-      <section class="view-panel" data-view-panel="settings" hidden>
-        <section class="settings-grid">
-          <article class="panel">
-            <div class="panel-header panel-header-inline">
-              <div>
-                <h3>État système</h3>
-                <p>Vérification simple des dépendances nécessaires au projet.</p>
-              </div>
-              <span class="status-pill" id="system-status-pill">Chargement</span>
-            </div>
-
-            <div class="settings-actions">
-              <button class="table-action" type="button" id="refresh-system-btn">Vérifier maintenant</button>
-              <button class="ghost-button ghost-button-secondary" type="button" data-view="dashboard">Retour dashboard</button>
-            </div>
-
-            <pre class="dependency-report" id="dependency-report">Cliquez sur Settings pour charger le rapport.</pre>
-          </article>
-
-          <article class="panel">
-            <div class="panel-header">
-              <h3>Aide débutant</h3>
-              <p>Cette page explique ce qui manque sans bloquer le dashboard.</p>
-            </div>
-
-            <ul class="settings-help">
-              <li><strong>Python/FastAPI/Uvicorn</strong> doivent être OK pour lancer le backend.</li>
-              <li><strong>Node.js/npm</strong> servent aux vérifications JavaScript.</li>
-              <li><strong>Mosquitto</strong> peut être installé plus tard pour tester MQTT réellement.</li>
-            </ul>
-          </article>
+        <section class="view-panel" data-view-panel="appareils" hidden>
+          <div id="devices-container"></div>
         </section>
-      </section>
-    </main>
-  </div>
 
-  <div class="modal-backdrop" id="publish-modal" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="publish-modal-title">
-      <div class="modal-header">
-        <div>
-          <h3 id="publish-modal-title">Envoyer un message MQTT</h3>
-          <p>Choisissez le topic et le contenu du message à publier.</p>
-        </div>
-        <button type="button" class="icon-button" id="close-publish-modal" aria-label="Fermer la fenêtre">×</button>
-      </div>
+        <section class="view-panel" data-view-panel="settings" hidden>
+          <section class="settings-grid">
+            <article class="panel">
+              <div class="panel-header panel-header-inline">
+                <div>
+                  <h3>État système</h3>
+                  <p>Vérification simple des dépendances nécessaires au projet.</p>
+                </div>
+                <span class="status-pill" id="system-status-pill">Chargement</span>
+              </div>
 
-      <form id="publish-form" class="modal-form">
-        <label class="field">
-          <span>Topic</span>
-          <input type="text" id="publish-topic" name="topic" value="temperature" />
-        </label>
+              <div class="settings-actions">
+                <button class="table-action" type="button" id="refresh-system-btn">
+                  Vérifier maintenant
+                </button>
+                <button
+                  class="ghost-button ghost-button-secondary"
+                  type="button"
+                  data-view="dashboard"
+                >
+                  Retour dashboard
+                </button>
+              </div>
 
-        <label class="field">
-          <span>Message</span>
-          <textarea id="publish-message" name="message" rows="4">25°C</textarea>
-        </label>
+              <pre class="dependency-report" id="dependency-report">
+Cliquez sur Settings pour charger le rapport.</pre
+              >
+            </article>
 
-        <div class="modal-actions">
-          <button type="button" class="ghost-button ghost-button-secondary" id="cancel-publish-modal">Annuler</button>
-          <button type="submit" class="table-action" id="submit-publish-message">Envoyer</button>
-        </div>
-      </form>
+            <article class="panel">
+              <div class="panel-header">
+                <h3>Aide débutant</h3>
+                <p>Cette page explique ce qui manque sans bloquer le dashboard.</p>
+              </div>
+
+              <ul class="settings-help">
+                <li>
+                  <strong>Python/FastAPI/Uvicorn</strong> doivent être OK pour lancer le backend.
+                </li>
+                <li><strong>Node.js/npm</strong> servent aux vérifications JavaScript.</li>
+                <li>
+                  <strong>Mosquitto</strong> peut être installé plus tard pour tester MQTT
+                  réellement.
+                </li>
+              </ul>
+            </article>
+          </section>
+        </section>
+      </main>
     </div>
-  </div>
+
+    <div class="modal-backdrop" id="publish-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="publish-modal-title">
+        <div class="modal-header">
+          <div>
+            <h3 id="publish-modal-title">Envoyer un message MQTT</h3>
+            <p>Choisissez le topic et le contenu du message à publier.</p>
+          </div>
+          <button
+            type="button"
+            class="icon-button"
+            id="close-publish-modal"
+            aria-label="Fermer la fenêtre"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="publish-form" class="modal-form">
+          <label class="field">
+            <span>Topic</span>
+            <input type="text" id="publish-topic" name="topic" value="temperature" />
+          </label>
+
+          <label class="field">
+            <span>Message</span>
+            <textarea id="publish-message" name="message" rows="4">25°C</textarea>
+          </label>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="ghost-button ghost-button-secondary"
+              id="cancel-publish-modal"
+            >
+              Annuler
+            </button>
+            <button type="submit" class="table-action" id="submit-publish-message">Envoyer</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script src="launcher-bridge.js"></script>
     <script src="script.js"></script>
@@ -289,5 +362,5 @@
     <script src="button-fallback.js"></script>
     <script src="publish-visual-fallback.js"></script>
     <script src="command-rescue.js"></script>
-</body>
+  </body>
 </html>

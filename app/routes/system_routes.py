@@ -118,3 +118,35 @@ def runtime_status():
 @router.post("/api/system/shutdown-managed")
 def shutdown_managed():
     return mosquitto_service.shutdown_managed()
+
+
+@router.get("/api/system/stats")
+def system_stats():
+    runtime = mosquitto_service.runtime_status()
+    counts = debug_service.get_event_counts()
+
+    # We fake client count based on whether broker + sub are running
+    clients = 0
+    if any(
+        s["running"]
+        for s in runtime.get("services", [])
+        if "broker" in s["name"].lower()
+    ):
+        clients += 1
+    if any(
+        s["running"]
+        for s in runtime.get("services", [])
+        if "subscriber" in s["name"].lower()
+    ):
+        clients += 1
+
+    return {
+        "ok": True,
+        "counts": counts,
+        "clients": clients,
+        "broker_running": any(
+            s["running"]
+            for s in runtime.get("services", [])
+            if "broker" in s["name"].lower()
+        ),
+    }
