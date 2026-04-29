@@ -34,5 +34,6 @@ Le GPS doit rester :
 - lisible
 - synthétique
 - fidèle au projet réel
+- dépourvu de toute simulation ou "petite tricherie" technique.
 
 Il ne doit pas devenir une copie brute du repo sans description.

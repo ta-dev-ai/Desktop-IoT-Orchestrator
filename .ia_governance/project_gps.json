@@ -268,7 +268,8 @@
     "NETTOYAGE ACTIF : Tout démarrage du launcher doit d'abord purger les processus 'zombies' ou les ports occupés par le projet.",
     "AUCUNE DONNÉE FICTIVE : Toute information affichée (stats, logs, messages) doit provenir d'un appel API réel et non de valeurs HTML en dur.",
     "ORIGINE DYNAMIQUE : Le frontend ne doit jamais coder l'adresse du backend (127.0.0.1:8000) en dur. Utiliser window.location.origin.",
-    "SÉCURITÉ DES PIPES : Ne jamais démarrer de processus système (Popen) avec redirection de flux (PIPE) sans un thread pour vider le buffer."
+    "SÉCURITÉ DES PIPES : Ne jamais démarrer de processus système (Popen) avec redirection de flux (PIPE) sans un thread pour vider le buffer.",
+    "NON À LA PETITE TRICHERIE : Interdiction formelle de simuler un état ou une valeur (KPI, logs, statut) qui n'est pas confirmée par une donnée réelle du backend."
   ],
   "future_planning": [
     {
